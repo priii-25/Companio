@@ -1,0 +1,144 @@
+/* Companio\client\src\components\AuthStyles.css */
+@import "../styles/ColorPalette.css";
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--soft-blue);
+  padding: 20px;
+}
+
+.auth-card {
+  background-color: var(--warm-beige);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+h1 {
+  color: var(--text-dark);
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.auth-subtitle {
+  color: var(--text-medium);
+  font-size: var(--font-medium);
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+label {
+  color: var(--text-dark);
+  font-size: var(--font-medium);
+  font-weight: 500;
+}
+
+input {
+  background-color: white;
+  border: 2px solid var(--soft-blue);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: var(--font-medium);
+  transition: border-color 0.3s;
+}
+
+input:focus {
+  border-color: var(--muted-teal);
+  outline: none;
+}
+
+.auth-button {
+  background-color: var(--sage-green);
+  color: var(--text-dark);
+  border: none;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: var(--font-medium);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 8px;
+}
+
+.auth-button:hover {
+  background-color: var(--muted-teal);
+}
+
+.auth-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background-color: var(--error-light);
+  color: var(--text-dark);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: var(--font-medium);
+  text-align: center;
+}
+
+.auth-alt-option {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.auth-alt-option p {
+  color: var(--text-medium);
+  font-size: var(--font-medium);
+  margin-bottom: 8px;
+}
+
+.text-button {
+  background: none;
+  border: none;
+  color: var(--muted-teal);
+  font-size: var(--font-medium);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.text-button:hover {
+  color: var(--sage-green);
+}
+
+/* Make form elements larger and more accessible for elderly users */
+input, button {
+  min-height: 60px;
+}
+
+/* Additional spacing for better visibility */
+.form-group:not(:last-child) {
+  margin-bottom: 16px;
+}
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+  text-align: center;
+  font-weight: bold;
+}
