@@ -1,8 +1,7 @@
-//Companio\client\src\App.js
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import AuthPage from './components/AuthPage';
-import MemoryRecall from './components/MemoryRecall';
+import JournalingComponent from './components/JournalingComponent';
 import './App.css';
 
 function App() {
@@ -13,7 +12,7 @@ function App() {
           <Route path="/login" element={<AuthPage />} />
           <Route path="/register" element={<AuthPage />} />
           <Route path="/" element={<Navigate to="/login" />} />
-          <Route path="/memory" element={<MemoryRecall />} />
+          <Route path="/journal" element={<JournalingComponent />} />
         </Routes>
       </div>
     </Router>
