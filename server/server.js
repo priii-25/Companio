@@ -3,11 +3,13 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { spawn } = require('child_process');
+const path = require('path');
+
 require('dotenv').config();
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increased limit for Base64 images
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -132,6 +134,36 @@ app.get('/api/journal', async (req, res) => {
     console.error('Error fetching journal entries:', error);
     res.status(500).json({ message: 'Server error' });
   }
+});
+
+app.post('/api/face-recognition', (req, res) => {
+  const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
+  
+  // Spawn Python process with option 1 for webcam
+  const pythonProcess = spawn('python', [pythonPath], {
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+  });
+
+  // Simulate user input '1' for webcam
+  pythonProcess.stdin.write('1\n');
+  pythonProcess.stdin.end();
+
+  let output = '';
+  pythonProcess.stdout.on('data', (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`Error: ${data}`);
+  });
+
+  pythonProcess.on('close', (code) => {
+    if (code === 0) {
+      res.status(200).json({ message: 'Face recognition started', output });
+    } else {
+      res.status(500).json({ error: 'Face recognition failed' });
+    }
+  });
 });
 
 // Start server

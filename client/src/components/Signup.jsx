@@ -1,8 +1,8 @@
+// Companio\client\src\components\Signup.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './AuthStyles.css';
 
-// Collection of comforting quotes for elderly users with dementia
 const comfortingQuotes = [
   "Today is a beautiful day to remember what matters most.",
   "You are surrounded by people who care about you.",
