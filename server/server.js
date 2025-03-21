@@ -5,13 +5,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { spawn } = require('child_process');
 const path = require('path');
+const WebSocket = require('ws');
+const fs = require('fs');
 
 require('dotenv').config();
 
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increased limit for Base64 images
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // MongoDB Connection
@@ -36,17 +38,21 @@ userSchema.pre('save', async function (next) {
 
 const User = mongoose.model('User', userSchema);
 
-// Journal Schema (keeping userId for future use, but not enforcing it now)
+// Journal Schema
 const journalSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional
-  image: { type: String, required: true }, // Base64 string
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  image: { type: String, required: true },
   text: { type: String, required: true },
+  mood: { type: String },
+  filter: { type: String },
+  isFavorited: { type: Boolean, default: false },
+  weatherEffect: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
 const Journal = mongoose.model('Journal', journalSchema);
 
-// Middleware to verify JWT (kept for auth routes)
+// Middleware to verify JWT
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ message: 'No token provided' });
@@ -101,12 +107,11 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Journal routes (no authMiddleware)
 app.post('/api/journal', async (req, res) => {
   try {
     console.log('Received request to /api/journal');
     console.log('Body:', req.body);
-    const { image, text } = req.body;
+    const { image, text, mood, filter, isFavorited, weatherEffect } = req.body;
     if (!image || !text) {
       console.log('Missing image or text');
       return res.status(400).json({ message: 'Image and text are required' });
@@ -115,6 +120,10 @@ app.post('/api/journal', async (req, res) => {
     const journalEntry = new Journal({
       image,
       text,
+      mood,
+      filter,
+      isFavorited,
+      weatherEffect,
     });
 
     await journalEntry.save();
@@ -136,36 +145,115 @@ app.get('/api/journal', async (req, res) => {
   }
 });
 
-app.post('/api/face-recognition', (req, res) => {
-  const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
-  
-  // Spawn Python process with option 1 for webcam
-  const pythonProcess = spawn('python', [pythonPath], {
-    env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
-  });
+// WebSocket server
+const server = app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server running on port ${server.address().port}`);
+});
 
-  // Simulate user input '1' for webcam
-  pythonProcess.stdin.write('1\n');
-  pythonProcess.stdin.end();
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (ws) => {
+  console.log('WebSocket client connected');
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+  });
+});
+
+app.post('/api/face-recognition/capture', (req, res) => {
+  const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
+  const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python3';
+  const pythonCwd = path.join(__dirname, '..', 'ai', 'Face_Recognition');
+  
+  console.log(`Using Python executable: ${pythonCommand}`);
+  console.log(`Python script path: ${pythonPath}`);
+  console.log(`Python working directory: ${pythonCwd}`);
+  console.log(`Environment PATH: ${process.env.PATH}`);
+
+  let pythonProcess;
+  try {
+    pythonProcess = spawn(pythonCommand, [pythonPath], {
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+      cwd: pythonCwd
+    });
+  } catch (error) {
+    console.error('Error spawning Python process:', error);
+    return res.status(500).json({ error: 'Failed to start webcam capture: Python executable not found.' });
+  }
+
+  pythonProcess.stdin.write('4\n'); // Use the new capture and process mode
 
   let output = '';
+  let errorOutput = '';
   pythonProcess.stdout.on('data', (data) => {
-    output += data.toString();
+    const dataStr = data.toString();
+    output += dataStr;
+    const lines = dataStr.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+      try {
+        const result = JSON.parse(line);
+        if (result.status === 'frame_captured') {
+          console.log('Frame captured:', result.path);
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'frameCaptured', path: result.path }));
+            }
+          });
+        } else if (result.status === 'success') {
+          console.log('Face recognition result:', result);
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'faceRecognition', result }));
+            }
+          });
+        }
+      } catch (e) {
+        console.log('Python script output:', line);
+      }
+    }
   });
 
   pythonProcess.stderr.on('data', (data) => {
-    console.error(`Error: ${data}`);
+    const errorStr = data.toString();
+    errorOutput += errorStr;
+    console.error(`Python error: ${errorStr}`);
+    if (errorStr.includes('ModuleNotFoundError')) {
+      pythonProcess.kill();
+      res.status(500).json({ error: 'Face recognition failed: Missing Python dependencies (e.g., tensorflow). Please install them.' });
+    }
+  });
+
+  pythonProcess.on('error', (error) => {
+    console.error('Python process error:', error);
+    res.status(500).json({ error: 'Webcam capture process failed to start.' });
   });
 
   pythonProcess.on('close', (code) => {
     if (code === 0) {
-      res.status(200).json({ message: 'Face recognition started', output });
+      res.status(200).json({ message: 'Webcam capture and processing completed', output });
     } else {
-      res.status(500).json({ error: 'Face recognition failed' });
+      res.status(500).json({ error: 'Webcam capture failed', code, errorOutput });
     }
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get('/api/captured-frame', (req, res) => {
+  const framePath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'captured_frame.jpg');
+  if (fs.existsSync(framePath)) {
+    res.sendFile(framePath);
+  } else {
+    res.status(404).json({ error: 'Frame not found' });
+  }
+});
+
+// Cleanup on server shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down server...');
+  try {
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error closing MongoDB connection:', err);
+    process.exit(1);
+  }
+});
