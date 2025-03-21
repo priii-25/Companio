@@ -1,7 +1,7 @@
-//Companio\client\src\components\AuthPage.jsx
 import React, { useState } from 'react';
 import Login from './Login';
 import Signup from './Signup';
+import './AuthStyles.css';
 
 const AuthPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,21 +10,25 @@ const AuthPage = () => {
   const switchToLogin = () => setCurrentView('login');
   const switchToSignup = () => setCurrentView('signup');
 
-  // If user is authenticated, show dashboard or redirect
   if (isAuthenticated) {
     return (
-      <div className="success-container">
-        <div className="success-card">
-          <h1>Welcome!</h1>
-          <p>You have successfully logged in.</p>
-          {/* In a real app, you would redirect to the dashboard or main app here */}
+      <div className="auth-container">
+        <div className="vintage-background"></div>
+        <div className="floating-shapes"></div>
+        <div className="success-container">
+          <div className="success-card">
+            <h1>Welcome!</h1>
+            <p>You have successfully logged in.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="auth-container">
+      <div className="vintage-background"></div>
+      <div className="floating-shapes"></div>
       {currentView === 'login' ? (
         <Login 
           setIsAuthenticated={setIsAuthenticated} 
@@ -36,7 +40,7 @@ const AuthPage = () => {
           switchToLogin={switchToLogin} 
         />
       )}
-    </>
+    </div>
   );
 };
 
