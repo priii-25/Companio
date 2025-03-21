@@ -64,7 +64,67 @@ const authMiddleware = (req, res, next) => {
     res.status(401).json({ message: 'Invalid token' });
   }
 };
+// Add this after the Journal Schema
+const routineSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  date: { type: String, required: true }, // ISO date string (e.g., "2025-03-21")
+  routines: [{
+    time: { type: String, required: true },
+    task: { type: String, required: true },
+    completed: { type: Boolean, default: false }
+  }],
+  createdAt: { type: Date, default: Date.now },
+});
 
+const Routine = mongoose.model('Routine', routineSchema);
+
+// Get routines for a specific date
+app.get('/api/routines/:date', authMiddleware, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const routine = await Routine.findOne({ userId: req.userId, date });
+    res.json(routine ? routine.routines : []);
+  } catch (error) {
+    console.error('Error fetching routines:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add or update routines for a specific date
+app.post('/api/routines/:date', authMiddleware, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const { routines } = req.body;
+
+    let routineDoc = await Routine.findOne({ userId: req.userId, date });
+    if (routineDoc) {
+      routineDoc.routines = routines;
+      await routineDoc.save();
+    } else {
+      routineDoc = new Routine({ userId: req.userId, date, routines });
+      await routineDoc.save();
+    }
+    res.status(201).json({ message: 'Routines saved successfully', routines: routineDoc.routines });
+  } catch (error) {
+    console.error('Error saving routines:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Optional: Get all routines for a user (for calendar overview)
+app.get('/api/routines', authMiddleware, async (req, res) => {
+  try {
+    const routines = await Routine.find({ userId: req.userId }).select('date routines');
+    const routinesMap = routines.reduce((acc, curr) => {
+      acc[curr.date] = curr.routines;
+      return acc;
+    }, {});
+    res.json(routinesMap);
+  } catch (error) {
+    console.error('Error fetching all routines:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 // Routes
 app.post('/api/users/register', async (req, res) => {
   try {
