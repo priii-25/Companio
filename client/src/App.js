@@ -5,6 +5,7 @@ import JournalingComponent from './components/JournalingComponent';
 import RoutineManagementApp from './components/RoutineManagementApp';
 import EmpatheticChatbot from './components/EmpatheticChatbot';
 import ProfileComponent from './components/ProfileComponent';
+import ProfileSetup from './components/ProfileSetup';
 import './App.css';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           <Route path="/routine" element={<RoutineManagementApp />} />
           <Route path="/chatbot" element={<EmpatheticChatbot />} />
           <Route path="/profile" element={<ProfileComponent />} />
+          <Route path="/profile-setup" element={<ProfileSetup />} />
         </Routes>
       </div>
     </Router>
