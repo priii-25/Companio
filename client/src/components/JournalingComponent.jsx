@@ -1,4 +1,3 @@
-/*Companio\client\src\components\JournalingComponent.jsx */
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/JournalingStyles.css';
@@ -47,10 +46,12 @@ const JournalingComponent = () => {
   const [focusedField, setFocusedField] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
   const [filter, setFilter] = useState('none');
   const [isFavorited, setIsFavorited] = useState(false);
   const [mood, setMood] = useState('');
   const [weatherEffect, setWeatherEffect] = useState('');
+  const [capturing, setCapturing] = useState(false);
   const fileInputRef = useRef(null);
   const journalCardRef = useRef(null);
 
@@ -84,9 +85,89 @@ const JournalingComponent = () => {
 
     const pageTurnSound = new Audio('/sounds/page-turn.mp3');
     pageTurnSound.volume = 0.3;
-    pageTurnSound.play().catch(e => console.log('Audio autoplay prevented'));
+    pageTurnSound.play().catch(e => console.log('Audio autoplay prevented:', e));
 
-    return () => clearInterval(promptInterval);
+    // Set up WebSocket connection with retry
+    let websocket;
+    let retryCount = 0;
+    const maxRetries = 5;
+    const retryInterval = 2000;
+
+    const connectWebSocket = () => {
+      websocket = new WebSocket('ws://localhost:5000');
+      websocket.onopen = () => {
+        console.log('WebSocket connected');
+        retryCount = 0;
+      };
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'frameCaptured') {
+            fetch('http://localhost:5000/api/captured-frame')
+              .then(response => response.blob())
+              .then(blob => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  setImage(reader.result);
+                  setCapturing(false);
+                  const shutterSound = new Audio('/sounds/camera-shutter.mp3');
+                  shutterSound.volume = 0.5;
+                  shutterSound.play().catch(e => console.log('Audio play prevented:', e));
+                };
+                reader.readAsDataURL(blob);
+              })
+              .catch(err => {
+                console.error('Error fetching captured frame:', err);
+                setError('Failed to load captured image.');
+                setCapturing(false);
+              });
+          } else if (data.type === 'faceRecognition') {
+            console.log('Face recognition result:', data.result);
+            if (data.result.faces) {
+              data.result.faces.forEach(face => {
+                if (face.recognized && face.name) {
+                  setJournalText((prev) => {
+                    const newText = prev ? `${prev}\n` : '';
+                    return `${newText}With: ${face.name}`;
+                  });
+                } else {
+                  setJournalText((prev) => {
+                    const newText = prev ? `${prev}\n` : '';
+                    return `${newText}New person added`;
+                  });
+                }
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing WebSocket message:', e);
+          setError('Error receiving face recognition result.');
+        }
+      };
+      websocket.onclose = () => {
+        console.log('WebSocket disconnected');
+        if (retryCount < maxRetries) {
+          setTimeout(() => {
+            console.log(`Retrying WebSocket connection (${retryCount + 1}/${maxRetries})...`);
+            retryCount++;
+            connectWebSocket();
+          }, retryInterval);
+        } else {
+          setError('Failed to connect to WebSocket server after multiple attempts.');
+        }
+      };
+      websocket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        websocket.close();
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      clearInterval(promptInterval);
+      if (websocket) websocket.close();
+    };
   }, []);
 
   // Parallax effect
@@ -133,6 +214,7 @@ const JournalingComponent = () => {
       setMemories(response.data);
     } catch (error) {
       console.error('Error fetching memories:', error);
+      setError('Failed to fetch memories. Please try again.');
     }
   };
 
@@ -150,7 +232,7 @@ const JournalingComponent = () => {
 
         const shutterSound = new Audio('/sounds/camera-shutter.mp3');
         shutterSound.volume = 0.5;
-        shutterSound.play().catch(e => console.log('Audio play prevented'));
+        shutterSound.play().catch(e => console.log('Audio play prevented:', e));
       }
     };
     input.click();
@@ -169,13 +251,31 @@ const JournalingComponent = () => {
 
       const pageFlipSound = new Audio('/sounds/page-flip.mp3');
       pageFlipSound.volume = 0.3;
-      pageFlipSound.play().catch(e => console.log('Audio play prevented'));
+      pageFlipSound.play().catch(e => console.log('Audio play prevented:', e));
+    }
+  };
+
+  const handleCaptureFromWebcam = async () => {
+    setCapturing(true);
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Capture timed out')), 30000); // Increased timeout
+      });
+
+      await Promise.race([
+        axios.post('http://localhost:5000/api/face-recognition/capture'),
+        timeoutPromise
+      ]);
+    } catch (error) {
+      console.error('Error capturing frame from webcam:', error);
+      setError('Failed to capture image from webcam. Please try again.');
+      setCapturing(false);
     }
   };
 
   const handleVoiceInput = () => {
     if (!('webkitSpeechRecognition' in window)) {
-      alert('Voice recording is not supported in this browser.');
+      setError('Voice recording is not supported in this browser.');
       return;
     }
 
@@ -189,7 +289,7 @@ const JournalingComponent = () => {
 
       const micOnSound = new Audio('/sounds/mic-on.mp3');
       micOnSound.volume = 0.5;
-      micOnSound.play().catch(e => console.log('Audio play prevented'));
+      micOnSound.play().catch(e => console.log('Audio play prevented:', e));
 
       recognition.start();
 
@@ -200,12 +300,13 @@ const JournalingComponent = () => {
 
         const micOffSound = new Audio('/sounds/mic-off.mp3');
         micOffSound.volume = 0.5;
-        micOffSound.play().catch(e => console.log('Audio play prevented'));
+        micOffSound.play().catch(e => console.log('Audio play prevented:', e));
       };
 
       recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
+        setError('Speech recognition failed. Please try again.');
       };
 
       recognition.onend = () => setIsRecording(false);
@@ -217,7 +318,7 @@ const JournalingComponent = () => {
 
     const heartSound = new Audio('/sounds/heart.mp3');
     heartSound.volume = 0.3;
-    heartSound.play().catch(e => console.log('Audio play prevented'));
+    heartSound.play().catch(e => console.log('Audio play prevented:', e));
   };
 
   const applyFilter = (selectedFilter) => {
@@ -226,11 +327,12 @@ const JournalingComponent = () => {
 
   const handleSaveMemory = async () => {
     if (!image || !journalText) {
-      alert('Please add both a photo and some text to save your memory.');
+      setError('Please add both a photo and some text to save your memory.');
       return;
     }
 
     setLoading(true);
+    setError('');
 
     try {
       const response = await axios.post(
@@ -250,7 +352,7 @@ const JournalingComponent = () => {
 
       const successSound = new Audio('/sounds/success.mp3');
       successSound.volume = 0.5;
-      successSound.play().catch(e => console.log('Audio play prevented'));
+      successSound.play().catch(e => console.log('Audio play prevented:', e));
 
       setTimeout(() => {
         setImage(null);
@@ -265,19 +367,9 @@ const JournalingComponent = () => {
 
     } catch (error) {
       console.error('Error saving memory:', error);
-      alert('Unable to save your memory. Please try again.');
+      setError('Unable to save your memory. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFaceRecognition = async () => {
-    try {
-      const response = await axios.post('http://localhost:5000/api/face-recognition');
-      console.log(response.data.message);
-    } catch (error) {
-      console.error('Error starting face recognition:', error);
-      alert('Failed to start face recognition. Please try again.');
     }
   };
 
@@ -353,6 +445,12 @@ const JournalingComponent = () => {
           <div className="success-message">
             <AnimatedIcon path={icons.heart} />
             {success}
+          </div>
+        )}
+
+        {error && (
+          <div className="error-message">
+            <span>⚠️ {error}</span>
           </div>
         )}
 
@@ -432,6 +530,14 @@ const JournalingComponent = () => {
             >
               <AnimatedIcon path={icons.gallery} />
               <span>My Photos</span>
+            </button>
+            <button 
+              className="action-button webcam-capture-button" 
+              onClick={handleCaptureFromWebcam}
+              disabled={capturing}
+            >
+              <AnimatedIcon path={icons.camera} />
+              <span>{capturing ? 'Capturing...' : 'Capture from Webcam'}</span>
             </button>
             <input
               type="file"
@@ -570,15 +676,6 @@ const JournalingComponent = () => {
           </div>
         )}
       </div>
-
-      {/* Floating Face Recognition Button */}
-      <button
-        className="face-recognition-button"
-        onClick={handleFaceRecognition}
-        title="Start Face Recognition"
-      >
-        <AnimatedIcon path={icons.camera} />
-      </button>
     </div>
   );
 };
