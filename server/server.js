@@ -1,3 +1,4 @@
+// server/server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -17,16 +18,34 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// User Schema
+// User Schema with Profile Fields
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
+  profile: {
+    preferredName: { type: String },
+    profilePicture: { type: String }, // Base64 or URL
+    dateOfBirth: { type: Date },
+    location: { type: String },
+    language: { type: String, default: 'English' },
+    medicalHistory: [{ condition: String, notes: String }],
+    medications: [{ name: String, dosage: String, schedule: String }],
+    allergies: [String],
+    caregiverContacts: [{ name: String, phone: String, email: String }],
+    emergencyContacts: [{ name: String, phone: String }],
+    recognizedFaces: [{ name: String, relationship: String, photo: String }],
+    accessibility: {
+      fontSize: { type: String, default: 'Large' }, // 'Large', 'Extra Large'
+      colorScheme: { type: String, default: 'Soothing Pastels' }, // 'Soothing Pastels', 'High Contrast'
+      voiceActivation: { type: Boolean, default: true }
+    }
+  }
 });
 
 userSchema.pre('save', async function (next) {
@@ -65,7 +84,7 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// Routes
+// Authentication Routes
 app.post('/api/users/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -107,7 +126,8 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-app.post('/api/journal', async (req, res) => {
+// Journal Routes
+app.post('/api/journal', authMiddleware, async (req, res) => {
   try {
     console.log('Received request to /api/journal');
     console.log('Body:', req.body);
@@ -118,6 +138,7 @@ app.post('/api/journal', async (req, res) => {
     }
 
     const journalEntry = new Journal({
+      userId: req.userId,
       image,
       text,
       mood,
@@ -135,9 +156,9 @@ app.post('/api/journal', async (req, res) => {
   }
 });
 
-app.get('/api/journal', async (req, res) => {
+app.get('/api/journal', authMiddleware, async (req, res) => {
   try {
-    const journalEntries = await Journal.find().sort({ createdAt: -1 });
+    const journalEntries = await Journal.find({ userId: req.userId }).sort({ createdAt: -1 });
     res.json(journalEntries);
   } catch (error) {
     console.error('Error fetching journal entries:', error);
@@ -145,7 +166,61 @@ app.get('/api/journal', async (req, res) => {
   }
 });
 
-// WebSocket server
+// Profile Routes
+app.get('/api/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user.profile || {});
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.put('/api/profile', authMiddleware, async (req, res) => {
+  try {
+    const updates = req.body;
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Merge updates into the profile object
+    user.profile = { ...user.profile, ...updates };
+    await user.save();
+    res.json({ message: 'Profile updated successfully', profile: user.profile });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/profile/insights', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const journalCount = await Journal.countDocuments({ userId });
+    const favoriteCount = await Journal.countDocuments({ userId, isFavorited: true });
+    const moodStats = await Journal.aggregate([
+      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $group: { _id: '$mood', count: { $sum: 1 } } }
+    ]);
+
+    const insights = {
+      totalMemories: journalCount,
+      favoriteMemories: favoriteCount,
+      moodBreakdown: moodStats.reduce((acc, item) => {
+        acc[item._id || 'No Mood'] = item.count;
+        return acc;
+      }, {})
+    };
+
+    res.json(insights);
+  } catch (error) {
+    console.error('Error fetching insights:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// WebSocket Server and Face Recognition Routes
 const server = app.listen(process.env.PORT || 5000, () => {
   console.log(`Server running on port ${server.address().port}`);
 });
