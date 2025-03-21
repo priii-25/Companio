@@ -1,5 +1,7 @@
+// client/src/components/Signup.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import './AuthStyles.css';
 
 const comfortingQuotes = [
@@ -42,6 +44,7 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [formProgress, setFormProgress] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * comfortingQuotes.length);
@@ -91,15 +94,21 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
         password: formData.password,
       });
       localStorage.setItem('token', response.data.token);
-      setSuccess('✨ Account created successfully! Redirecting...');
+      setSuccess('✨ Account created successfully! Let’s set up your profile...');
       document.querySelector('.auth-card').classList.add('success-animation');
       setLoading(false);
-      setTimeout(() => switchToLogin(), 2500);
+      setTimeout(() => {
+        setIsAuthenticated(true);
+        navigate('/profile-setup');
+      }, 2500);
     } catch (err) {
       setLoading(false);
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     }
   };
+
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
 
   return (
     <div className="auth-card">
@@ -148,7 +157,7 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
               onChange={handleChange} 
               placeholder="Enter your email address"
               onFocus={() => setFocusedField('email')}
-              onBlur={() => setFocusedField(null)}
+              onBlur={() => setFocusedField(null)} // Completed this line
               required 
             />
             <div className="input-focus-effect"></div>
@@ -173,7 +182,7 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
             <button 
               type="button" 
               className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={togglePasswordVisibility}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? "Hide" : "Show"}
@@ -200,7 +209,7 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
             <button 
               type="button" 
               className="password-toggle"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              onClick={toggleConfirmPasswordVisibility}
               aria-label={showConfirmPassword ? "Hide password" : "Show password"}
             >
               {showConfirmPassword ? "Hide" : "Show"}
