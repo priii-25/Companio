@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/RoutineManagementStyles.css';
 import SoundTherapyComponent from './SoundTherapyComponent';
+import axios from 'axios';
 
-// Weather emoticons (keeping the original paths)
+// Weather emoticons
 const weatherEmojis = {
   sunny: 'summer.png',
   rainy: '/emoticons/rainy-emoticon.png',
@@ -10,21 +11,7 @@ const weatherEmojis = {
   cloudy: '/emoticons/cloudy-emoticon.png'
 };
 
-// Initial routines data (expanded for calendar)
-const initialRoutines = {
-  "2025-03-21": [
-    { id: 1, time: "8:00 AM", task: "Morning Tea", completed: false },
-    { id: 2, time: "10:00 AM", task: "Garden Walk", completed: true },
-    { id: 3, time: "12:00 PM", task: "Lunch Time", completed: false },
-    { id: 4, time: "3:00 PM", task: "Story Hour", completed: false }
-  ],
-  "2025-03-22": [
-    { id: 5, time: "9:00 AM", task: "Breakfast", completed: false },
-    { id: 6, time: "11:00 AM", task: "Call Family", completed: false }
-  ]
-};
-
-// Memory-inspired poetry (expanded with longer content)
+// Memory-inspired poetry
 const memoryPoems = [
   { 
     title: "Whispers of Yesterday", 
@@ -86,9 +73,12 @@ const memories = [
   "Your favorite holiday is Thanksgiving because you love cooking for family."
 ];
 
+// Assume token is stored in localStorage or a context
+const getToken = () => localStorage.getItem('token');
+
 const RoutineManagementApp = () => {
-  const [routines, setRoutines] = useState(initialRoutines);
-  const [selectedDate, setSelectedDate] = useState("2025-03-21"); // Default to today
+  const [routines, setRoutines] = useState({});
+  const [selectedDate, setSelectedDate] = useState("2025-03-21");
   const [newRoutine, setNewRoutine] = useState({ time: "", task: "" });
   const [editingRoutine, setEditingRoutine] = useState(null);
   const [animate, setAnimate] = useState(false);
@@ -99,15 +89,52 @@ const RoutineManagementApp = () => {
   const [currentMessage, setCurrentMessage] = useState("");
   const [selectedPoem, setSelectedPoem] = useState(null);
 
-  // Hardcoded weather
   const currentWeather = { condition: "sunny", temperature: "75°F", description: "A bright and cheerful day" };
 
-  // Add subtle animation effect when changing dates
+  // Fetch all routines on mount
   useEffect(() => {
+    const fetchRoutines = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/routines', {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        setRoutines(response.data);
+      } catch (error) {
+        console.error('Error fetching routines:', error);
+      }
+    };
+    fetchRoutines();
+  }, []);
+
+  // Fetch routines for selected date when it changes
+  useEffect(() => {
+    const fetchDailyRoutines = async () => {
+      try {
+        const response = await axios.get(`http://localhost:5000/api/routines/${selectedDate}`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        setRoutines(prev => ({ ...prev, [selectedDate]: response.data }));
+      } catch (error) {
+        console.error('Error fetching daily routines:', error);
+      }
+    };
+    fetchDailyRoutines();
     setAnimate(true);
     const timer = setTimeout(() => setAnimate(false), 300);
     return () => clearTimeout(timer);
   }, [selectedDate]);
+
+  const saveRoutinesToBackend = async (updatedRoutines) => {
+    try {
+      const response = await axios.post(`http://localhost:5000/api/routines/${selectedDate}`, 
+        { routines: updatedRoutines[selectedDate] || [] },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+      setRoutines(prev => ({ ...prev, [selectedDate]: response.data.routines }));
+    } catch (error) {
+      console.error('Error saving routines:', error);
+    }
+  };
 
   const handleToggleComplete = (id) => {
     const updatedRoutines = { ...routines };
@@ -116,18 +143,20 @@ const RoutineManagementApp = () => {
     );
     updatedRoutines[selectedDate] = dayRoutines;
     setRoutines(updatedRoutines);
+    saveRoutinesToBackend(updatedRoutines);
   };
 
   const handleAddRoutine = () => {
     if (!newRoutine.time || !newRoutine.task) return;
     const updatedRoutines = { ...routines };
-    const newId = Math.max(...Object.values(routines).flat().map(r => r.id), 0) + 1;
+    const newId = Math.max(...Object.values(routines).flat().map(r => r.id || 0), 0) + 1;
     updatedRoutines[selectedDate] = [
       ...(updatedRoutines[selectedDate] || []),
       { id: newId, ...newRoutine, completed: false }
     ];
     setRoutines(updatedRoutines);
     setNewRoutine({ time: "", task: "" });
+    saveRoutinesToBackend(updatedRoutines);
   };
 
   const handleEditRoutine = (routine) => {
@@ -144,6 +173,7 @@ const RoutineManagementApp = () => {
     setRoutines(updatedRoutines);
     setEditingRoutine(null);
     setNewRoutine({ time: "", task: "" });
+    saveRoutinesToBackend(updatedRoutines);
   };
 
   const handleStorytellingClick = () => {
@@ -157,13 +187,10 @@ const RoutineManagementApp = () => {
   const handleSendMessage = () => {
     if (!currentMessage.trim()) return;
     
-    // Add user message
     setChatMessages([...chatMessages, { text: currentMessage, isUser: true }]);
     setCurrentMessage("");
     
-    // Simulate companion response with memories
     setTimeout(() => {
-      // Generate a random response that occasionally includes memories
       const randomMemory = Math.random() > 0.5 
         ? `I remember that ${memories[Math.floor(Math.random() * memories.length)]} ` 
         : "";
@@ -190,7 +217,6 @@ const RoutineManagementApp = () => {
     setSelectedPoem(null);
   };
 
-  // Generate simple calendar days (7 days starting from today)
   const getCalendarDays = () => {
     const today = new Date("2025-03-21");
     return Array.from({ length: 7 }, (_, i) => {
@@ -209,14 +235,11 @@ const RoutineManagementApp = () => {
         <div className="header-decoration"></div>
       </div>
 
-      {/* Talk to Companion Button */}
       <button className="companion-chat-button" onClick={handleChatToggle}>
         Talk to Your Companion
       </button>
 
-      {/* Main Layout: Calendar on Left, Today's Routine on Right */}
       <div className="routine-layout">
-        {/* Calendar Section */}
         <div className="calendar-section">
           <h2 className="section-title">My Week</h2>
           <div className="calendar-grid">
@@ -236,7 +259,6 @@ const RoutineManagementApp = () => {
           </div>
         </div>
 
-        {/* Today's Routine Section */}
         <div className="routine-section">
           <h2 className="section-title">
             {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -268,7 +290,6 @@ const RoutineManagementApp = () => {
             </ul>
           )}
 
-          {/* Add/Edit Routine Form */}
           <div className="routine-form">
             <input
               type="time"
@@ -293,9 +314,7 @@ const RoutineManagementApp = () => {
         </div>
       </div>
 
-      {/* Weather and Poetry in a more balanced layout */}
       <div className="routine-layout">
-        {/* Weather Section - Image will be below text */}
         <div className="weather-card">
           <div className="weather-content">
             <div className="weather-details">
@@ -310,7 +329,6 @@ const RoutineManagementApp = () => {
           </div>
         </div>
 
-        {/* Poetry Section - With view full poem functionality */}
         <div className="poetry-card">
           <div className="poetry-header">
             <h2 className="poetry-title">Memories in Verse</h2>
@@ -332,12 +350,10 @@ const RoutineManagementApp = () => {
         </div>
       </div>
 
-      {/* Sound Therapy Section */}
       <div className="routine-layout">
         <SoundTherapyComponent />
       </div>
 
-      {/* Companion Chat Modal */}
       {showChatModal && (
         <div className="chat-modal-overlay">
           <div className="chat-modal">
@@ -369,7 +385,6 @@ const RoutineManagementApp = () => {
         </div>
       )}
 
-      {/* Full Poem Modal */}
       {selectedPoem && (
         <div className="poem-modal-overlay">
           <div className="poem-modal">
