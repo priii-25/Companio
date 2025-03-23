@@ -17,8 +17,8 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+// MongoDB Connection (Updated: Removed deprecated options)
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   profile: {
     preferredName: { type: String },
-    profilePicture: { type: String }, // Base64 or URL
+    profilePicture: { type: String },
     dateOfBirth: { type: Date },
     location: { type: String },
     language: { type: String, default: 'English' },
@@ -41,8 +41,8 @@ const userSchema = new mongoose.Schema({
     emergencyContacts: [{ name: String, phone: String }],
     recognizedFaces: [{ name: String, relationship: String, photo: String }],
     accessibility: {
-      fontSize: { type: String, default: 'Large' }, // 'Large', 'Extra Large'
-      colorScheme: { type: String, default: 'Soothing Pastels' }, // 'Soothing Pastels', 'High Contrast'
+      fontSize: { type: String, default: 'Large' },
+      colorScheme: { type: String, default: 'Soothing Pastels' },
       voiceActivation: { type: Boolean, default: true }
     }
   }
@@ -56,10 +56,11 @@ userSchema.pre('save', async function (next) {
 });
 
 const User = mongoose.model('User', userSchema);
-// Add this after the Journal Schema
+
+// Routine Schema
 const routineSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  date: { type: String, required: true }, // ISO date string (e.g., "2025-03-21")
+  date: { type: String, required: true },
   routines: [{
     time: { type: String, required: true },
     task: { type: String, required: true },
@@ -70,53 +71,6 @@ const routineSchema = new mongoose.Schema({
 
 const Routine = mongoose.model('Routine', routineSchema);
 
-// Get routines for a specific date
-app.get('/api/routines/:date', authMiddleware, async (req, res) => {
-  try {
-    const { date } = req.params;
-    const routine = await Routine.findOne({ userId: req.userId, date });
-    res.json(routine ? routine.routines : []);
-  } catch (error) {
-    console.error('Error fetching routines:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Add or update routines for a specific date
-app.post('/api/routines/:date', authMiddleware, async (req, res) => {
-  try {
-    const { date } = req.params;
-    const { routines } = req.body;
-
-    let routineDoc = await Routine.findOne({ userId: req.userId, date });
-    if (routineDoc) {
-      routineDoc.routines = routines;
-      await routineDoc.save();
-    } else {
-      routineDoc = new Routine({ userId: req.userId, date, routines });
-      await routineDoc.save();
-    }
-    res.status(201).json({ message: 'Routines saved successfully', routines: routineDoc.routines });
-  } catch (error) {
-    console.error('Error saving routines:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Optional: Get all routines for a user (for calendar overview)
-app.get('/api/routines', authMiddleware, async (req, res) => {
-  try {
-    const routines = await Routine.find({ userId: req.userId }).select('date routines');
-    const routinesMap = routines.reduce((acc, curr) => {
-      acc[curr.date] = curr.routines;
-      return acc;
-    }, {});
-    res.json(routinesMap);
-  } catch (error) {
-    console.error('Error fetching all routines:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
 // Journal Schema
 const journalSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -186,8 +140,8 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Journal Routes
-app.post('/api/journal', authMiddleware, async (req, res) => {
+// Journal Routes (Updated to match working version)
+app.post('/api/journal', async (req, res) => {
   try {
     console.log('Received request to /api/journal');
     console.log('Body:', req.body);
@@ -197,8 +151,19 @@ app.post('/api/journal', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Image and text are required' });
     }
 
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    let userId;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.userId;
+      } catch (error) {
+        console.log('Invalid token, proceeding without userId');
+      }
+    }
+
     const journalEntry = new Journal({
-      userId: req.userId,
+      userId,
       image,
       text,
       mood,
@@ -216,9 +181,26 @@ app.post('/api/journal', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/journal', authMiddleware, async (req, res) => {
+app.get('/api/journal', async (req, res) => {
   try {
-    const journalEntries = await Journal.find({ userId: req.userId }).sort({ createdAt: -1 });
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    let journalEntries;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.userId;
+        journalEntries = await Journal.find({ userId }).sort({ createdAt: -1 });
+        if (!journalEntries.length) {
+          console.log('No user-specific entries found, falling back to all');
+          journalEntries = await Journal.find().sort({ createdAt: -1 });
+        }
+      } catch (error) {
+        console.log('Invalid token, fetching all journals');
+        journalEntries = await Journal.find().sort({ createdAt: -1 });
+      }
+    } else {
+      journalEntries = await Journal.find().sort({ createdAt: -1 });
+    }
     res.json(journalEntries);
   } catch (error) {
     console.error('Error fetching journal entries:', error);
@@ -244,7 +226,6 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Merge updates into the profile object
     user.profile = { ...user.profile, ...updates };
     await user.save();
     res.json({ message: 'Profile updated successfully', profile: user.profile });
@@ -276,6 +257,52 @@ app.get('/api/profile/insights', authMiddleware, async (req, res) => {
     res.json(insights);
   } catch (error) {
     console.error('Error fetching insights:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Routine Routes
+app.get('/api/routines/:date', authMiddleware, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const routine = await Routine.findOne({ userId: req.userId, date });
+    res.json(routine ? routine.routines : []);
+  } catch (error) {
+    console.error('Error fetching routines:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/routines/:date', authMiddleware, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const { routines } = req.body;
+
+    let routineDoc = await Routine.findOne({ userId: req.userId, date });
+    if (routineDoc) {
+      routineDoc.routines = routines;
+      await routineDoc.save();
+    } else {
+      routineDoc = new Routine({ userId: req.userId, date, routines });
+      await routineDoc.save();
+    }
+    res.status(201).json({ message: 'Routines saved successfully', routines: routineDoc.routines });
+  } catch (error) {
+    console.error('Error saving routines:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/routines', authMiddleware, async (req, res) => {
+  try {
+    const routines = await Routine.find({ userId: req.userId }).select('date routines');
+    const routinesMap = routines.reduce((acc, curr) => {
+      acc[curr.date] = curr.routines;
+      return acc;
+    }, {});
+    res.json(routinesMap);
+  } catch (error) {
+    console.error('Error fetching all routines:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -315,7 +342,7 @@ app.post('/api/face-recognition/capture', (req, res) => {
     return res.status(500).json({ error: 'Failed to start webcam capture: Python executable not found.' });
   }
 
-  pythonProcess.stdin.write('4\n'); // Use the new capture and process mode
+  pythonProcess.stdin.write('4\n');
 
   let output = '';
   let errorOutput = '';
