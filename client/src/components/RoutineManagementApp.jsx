@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 import '../styles/RoutineManagementStyles.css';
 import SoundTherapyComponent from './SoundTherapyComponent';
 import axios from 'axios';
@@ -90,6 +91,7 @@ const RoutineManagementApp = () => {
   const [selectedPoem, setSelectedPoem] = useState(null);
 
   const currentWeather = { condition: "sunny", temperature: "75°F", description: "A bright and cheerful day" };
+  const navigate = useNavigate();
 
   // Fetch all routines on mount
   useEffect(() => {
@@ -177,11 +179,11 @@ const RoutineManagementApp = () => {
   };
 
   const handleStorytellingClick = () => {
-    alert("Opening Interactive Storytelling...");
+    navigate("/story");
   };
 
   const handleChatToggle = () => {
-    setShowChatModal(!showChatModal);
+    navigate("/chatbot");  
   };
 
   const handleSendMessage = () => {

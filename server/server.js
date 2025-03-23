@@ -1,4 +1,3 @@
-// server/server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -17,7 +16,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// MongoDB Connection (Updated: Removed deprecated options)
+// MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
@@ -140,7 +139,7 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Journal Routes (Updated to match working version)
+// Journal Routes
 app.post('/api/journal', async (req, res) => {
   try {
     console.log('Received request to /api/journal');
@@ -204,6 +203,24 @@ app.get('/api/journal', async (req, res) => {
     res.json(journalEntries);
   } catch (error) {
     console.error('Error fetching journal entries:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/journal/texts', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    // Fetch only the 'text' field for journals belonging to the authenticated user
+    const journalTexts = await Journal.find({ userId }, 'text')
+      .sort({ createdAt: -1 }) // Sort by creation date, newest first
+      .lean(); // Use lean() for better performance since we only need the text field
+
+    // Extract just the text values into an array
+    const texts = journalTexts.map(entry => entry.text);
+
+    res.json({ texts });
+  } catch (error) {
+    console.error('Error fetching journal texts:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
