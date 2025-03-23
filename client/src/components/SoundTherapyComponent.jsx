@@ -25,7 +25,7 @@ const soundTherapyOptions = {
 };
 
 const SoundTherapyComponent = () => {
-  const [currentMood, setCurrentMood] = useState("calm"); // Default mood
+  const [currentMood, setCurrentMood] = useState("calm");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSound, setCurrentSound] = useState(null);
   const [audioElement, setAudioElement] = useState(null);
