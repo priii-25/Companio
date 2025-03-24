@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -477,6 +478,28 @@ app.get('/api/story/:mood', async (req, res) => {
   } catch (error) {
     console.error("Error generating story:", error);
     res.status(500).json({ message: "Failed to generate story", error: error.message });
+  }
+});
+app.get('/api/weather', async (req, res) => {
+  const { lat, lon } = req.query; // Pass latitude and longitude from frontend
+  const apiKey = "process.env.OPENWEATHER_API_KEY"; // Store in .env
+  if (!apiKey) {
+    return res.status(500).json({ message: 'Weather API key not configured' });
+  }
+
+  try {
+    const response = await axios.get(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&appid=${apiKey}`
+    );
+    const weatherData = {
+      condition: response.data.weather[0].main.toLowerCase(),
+      temperature: `${Math.round(response.data.main.temp)}°F`,
+      description: response.data.weather[0].description,
+    };
+    res.json(weatherData);
+  } catch (error) {
+    console.error('Error fetching weather:', error);
+    res.status(500).json({ message: 'Failed to fetch weather data' });
   }
 });
 // Cleanup on server shutdown

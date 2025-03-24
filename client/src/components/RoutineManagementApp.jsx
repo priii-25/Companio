@@ -4,12 +4,14 @@ import '../styles/RoutineManagementStyles.css';
 import SoundTherapyComponent from './SoundTherapyComponent';
 import axios from 'axios';
 
-// Weather emoticons
+// Weather emoticons (adjust paths to match your public folder structure)
 const weatherEmojis = {
-  sunny: 'summer.png',
-  rainy: '/emoticons/rainy-emoticon.png',
-  snowy: '/emoticons/snowy-emoticon.png',
-  cloudy: '/emoticons/cloudy-emoticon.png'
+  sunny: '/emoticons/sunny-emoticon.png',
+  rain: '/emoticons/rainy-emoticon.png',
+  snow: '/emoticons/snowy-emoticon.png',
+  clouds: '/emoticons/cloudy-emoticon.png',
+  clear: '/emoticons/sunny-emoticon.png', // Map 'clear' to sunny
+  unknown: '/emoticons/unknown-emoticon.png', // Fallback
 };
 
 // Memory-inspired poetry
@@ -74,12 +76,12 @@ const memories = [
   "Your favorite holiday is Thanksgiving because you love cooking for family."
 ];
 
-// Assume token is stored in localStorage or a context
+// Token retrieval from localStorage
 const getToken = () => localStorage.getItem('token');
 
 const RoutineManagementApp = () => {
   const [routines, setRoutines] = useState({});
-  const [selectedDate, setSelectedDate] = useState("2025-03-21");
+  const [selectedDate, setSelectedDate] = useState("2025-03-24"); // Matches current date from your context
   const [newRoutine, setNewRoutine] = useState({ time: "", task: "" });
   const [editingRoutine, setEditingRoutine] = useState(null);
   const [animate, setAnimate] = useState(false);
@@ -89,8 +91,8 @@ const RoutineManagementApp = () => {
   ]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [selectedPoem, setSelectedPoem] = useState(null);
-
-  const currentWeather = { condition: "sunny", temperature: "75°F", description: "A bright and cheerful day" };
+  const [currentWeather, setCurrentWeather] = useState(null); // Real-time weather state
+  const [weatherLoading, setWeatherLoading] = useState(true); // Weather loading state
   const navigate = useNavigate();
 
   // Fetch all routines on mount
@@ -125,6 +127,26 @@ const RoutineManagementApp = () => {
     const timer = setTimeout(() => setAnimate(false), 300);
     return () => clearTimeout(timer);
   }, [selectedDate]);
+
+  // Fetch real-time weather on mount
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setWeatherLoading(true);
+      try {
+        const response = await axios.get('http://localhost:5000/api/weather', {
+          headers: { Authorization: `Bearer ${getToken()}` },
+          params: { lat: 40.7128, lon: -74.0060 } // New York as default; replace with user location later
+        });
+        setCurrentWeather(response.data);
+      } catch (error) {
+        console.error('Error fetching weather:', error);
+        setCurrentWeather({ condition: 'unknown', temperature: 'N/A', description: 'Weather data unavailable' });
+      } finally {
+        setWeatherLoading(false);
+      }
+    };
+    if (getToken()) fetchWeather();
+  }, []);
 
   const saveRoutinesToBackend = async (updatedRoutines) => {
     try {
@@ -220,7 +242,7 @@ const RoutineManagementApp = () => {
   };
 
   const getCalendarDays = () => {
-    const today = new Date("2025-03-21");
+    const today = new Date("2025-03-24"); // Matches current date
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
@@ -321,13 +343,27 @@ const RoutineManagementApp = () => {
           <div className="weather-content">
             <div className="weather-details">
               <h2 className="weather-title">Today's Weather</h2>
-              <p className="weather-condition">{currentWeather.condition}</p>
-              <p className="weather-temp">{currentWeather.temperature}</p>
-              <p className="weather-desc">{currentWeather.description}</p>
+              {weatherLoading ? (
+                <p>Loading weather...</p>
+              ) : currentWeather ? (
+                <>
+                  <p className="weather-condition">{currentWeather.condition}</p>
+                  <p className="weather-temp">{currentWeather.temperature}</p>
+                  <p className="weather-desc">{currentWeather.description}</p>
+                </>
+              ) : (
+                <p>Unable to fetch weather data</p>
+              )}
             </div>
           </div>
           <div className="weather-image-container">
-            <img src={weatherEmojis[currentWeather.condition]} alt="weather" className="weather-emoticon" />
+            {weatherLoading ? (
+              <p>...</p>
+            ) : currentWeather && weatherEmojis[currentWeather.condition] ? (
+              <img src={weatherEmojis[currentWeather.condition]} alt={currentWeather.condition} className="weather-emoticon" />
+            ) : (
+              <img src={weatherEmojis.unknown} alt="unknown" className="weather-emoticon" />
+            )}
           </div>
         </div>
 
