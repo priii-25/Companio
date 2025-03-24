@@ -14,39 +14,6 @@ const AnimatedIcon = ({ path, className = "" }) => (
   </svg>
 );
 
-// Dummy story with multiple pages
-const dummyStoryPages = [
-  "Once upon a time, in a land of whispering winds, a young dreamer found a golden key beneath an ancient oak. It shimmered with secrets, promising adventures beyond imagination.",
-  "The key led them to a hidden glade where the trees sang lullabies. Each note carried a memory, weaving a tapestry of forgotten tales that danced in the air like fireflies.",
-  "In the heart of the glade stood a door, carved with runes that glowed softly. The dreamer turned the key, and the door creaked open, revealing a world bathed in golden light."
-];
-
-const dummyStories = [
-  {
-    pages: dummyStoryPages,
-    mood: "Whimsical",
-    backdrop: "enchanted"
-  },
-  {
-    pages: [
-      "The castle stood tall against a crimson sky, its towers piercing the clouds. A lone knight, clad in silver, ventured forth on a quest for honor.",
-      "Guided by a single star that flickered like hope, the knight crossed a bridge of moonlit stone, where shadows whispered secrets of the past.",
-      "At the castle gates, a dragon awaited, its scales shimmering like molten gold. The knight raised their sword, ready to face their destiny."
-    ],
-    mood: "Epic",
-    backdrop: "twilight"
-  },
-  {
-    pages: [
-      "In a village nestled by the sea, a girl with eyes like the tide discovered a bottle washed ashore. Inside was a map, drawn in glowing ink.",
-      "The map led her to a cove where the waves sang of ancient shipwrecks. She dove into the depths, following the light of a bioluminescent pearl.",
-      "Beneath the waves, she found a chest of treasures, each piece whispering tales of sailors and storms, a legacy of the ocean’s heart."
-    ],
-    mood: "Mystical",
-    backdrop: "mist"
-  }
-];
-
 const InteractiveStorytellingApp = () => {
   const [storyPages, setStoryPages] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
@@ -55,8 +22,10 @@ const InteractiveStorytellingApp = () => {
   const [backdrop, setBackdrop] = useState('');
   const [savedStories, setSavedStories] = useState([]);
   const [isFlipping, setIsFlipping] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem('token') || ''); // Assuming token is stored in localStorage after login
 
-  const moodOptions = ["Whimsical", "Epic", "Mystical", "Romantic"];
+  const moodOptions = ["Melancholic", "Joyful", "Mysterious", "Thrilling", "Serene", "Nostalgic"];
   const backdropOptions = [
     { label: "Enchanted Forest", value: "enchanted" },
     { label: "Twilight Sky", value: "twilight" },
@@ -68,16 +37,46 @@ const InteractiveStorytellingApp = () => {
     const bookOpenSound = new Audio('/sounds/book-open.mp3');
     bookOpenSound.volume = 0.3;
     bookOpenSound.play().catch(e => console.log('Audio autoplay prevented:', e));
+    fetchSavedStories();
   }, []);
 
-  const generateStory = () => {
-    const randomIndex = Math.floor(Math.random() * dummyStories.length);
-    const story = dummyStories[randomIndex];
-    setStoryPages(story.pages);
-    setMood(story.mood);
-    setBackdrop(story.backdrop);
-    setCurrentPage(0);
-    setIsFavorited(false);
+  const fetchSavedStories = async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get('http://localhost:5000/api/stories', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedStories(response.data);
+    } catch (error) {
+      console.error('Error fetching saved stories:', error);
+    }
+  };
+
+  const generateStory = async () => {
+    if (!mood) {
+      alert("Please select a mood to weave your tale!");
+      return;
+    }
+    if (!token) {
+      alert("Please log in to weave a tale!");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await axios.get(`http://localhost:5000/api/story/${mood.toLowerCase()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const fullStory = response.data.story;
+      const pages = fullStory.split('. ').map(sentence => sentence.trim() + '.');
+      setStoryPages(pages);
+      setCurrentPage(0);
+      setIsFavorited(false);
+    } catch (error) {
+      console.error("Error fetching story:", error);
+      setStoryPages(["An error occurred while weaving your tale. Please try again."]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const flipPage = (direction) => {
@@ -91,10 +90,24 @@ const InteractiveStorytellingApp = () => {
     setTimeout(() => setIsFlipping(false), 1000);
   };
 
-  const toggleFavorite = () => {
+  const toggleFavorite = async () => {
+    if (!token) {
+      alert("Please log in to save stories!");
+      return;
+    }
     setIsFavorited(!isFavorited);
     if (!isFavorited && storyPages.length) {
-      setSavedStories([...savedStories, { pages: storyPages, mood, backdrop }]);
+      try {
+        const response = await axios.post(
+          'http://localhost:5000/api/stories',
+          { pages: storyPages, mood, backdrop },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setSavedStories([...savedStories, response.data.story]);
+      } catch (error) {
+        console.error('Error saving story:', error);
+        setIsFavorited(false); // Revert if save fails
+      }
     }
   };
 
@@ -120,16 +133,16 @@ const InteractiveStorytellingApp = () => {
         <h1 className="storybook-title">Enchanted Chronicles</h1>
         <div className="controls">
           <select value={mood} onChange={(e) => setMood(e.target.value)} className="story-select">
-            <option value="">Mood</option>
+            <option value="">Select Mood</option>
             {moodOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
           <select value={backdrop} onChange={(e) => setBackdrop(e.target.value)} className="story-select">
-            <option value="">Scene</option>
+            <option value="">Select Scene</option>
             {backdropOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
-          <button className="weave-btn" onClick={generateStory}>
+          <button className="weave-btn" onClick={generateStory} disabled={loading || !token}>
             <AnimatedIcon path={icons.quill} />
-            Weave a Tale
+            {loading ? "Weaving..." : "Weave a Tale"}
           </button>
         </div>
       </div>
@@ -138,7 +151,7 @@ const InteractiveStorytellingApp = () => {
         {storyPages.length ? (
           <div className="story-book">
             <div className={`backdrop-overlay ${backdrop}`}></div>
-            <h2 className="story-title">{mood} Adventure</h2>
+            <h2 className="story-title">{mood || "Untitled"} Adventure</h2>
             <div className="book-pages">
               <div className={`page left-page ${currentPage === 0 ? 'active' : ''}`}>
                 <div className="page-content">
@@ -163,7 +176,7 @@ const InteractiveStorytellingApp = () => {
           </div>
         ) : (
           <div className="empty-story">
-            <p>Weave a tale to begin your adventure...</p>
+            <p>{token ? "Weave a tale to begin your adventure..." : "Please log in to start weaving tales!"}</p>
           </div>
         )}
       </div>
@@ -172,7 +185,7 @@ const InteractiveStorytellingApp = () => {
         <h2 className="library-title">Your Enchanted Library</h2>
         {savedStories.length === 0 ? (
           <div className="story-shelf">
-            <p className="library-empty">Bookmark your tales to fill this library!</p>
+            <p className="library-empty">{token ? "Bookmark your tales to fill this library!" : "Log in to view your library!"}</p>
           </div>
         ) : (
           <div className="story-shelf">

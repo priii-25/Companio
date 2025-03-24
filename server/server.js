@@ -83,7 +83,16 @@ const journalSchema = new mongoose.Schema({
 });
 
 const Journal = mongoose.model('Journal', journalSchema);
+// Story Schema (New)
+const storySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  pages: [{ type: String, required: true }],
+  mood: { type: String, required: true },
+  backdrop: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
 
+const Story = mongoose.model('Story', storySchema);
 // Middleware to verify JWT
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -207,24 +216,19 @@ app.get('/api/journal', async (req, res) => {
   }
 });
 
-app.get('/api/journal/texts', authMiddleware, async (req, res) => {
+app.get('/api/journal/texts', async (req, res) => {
   try {
-    const userId = req.userId;
-    // Fetch only the 'text' field for journals belonging to the authenticated user
-    const journalTexts = await Journal.find({ userId }, 'text')
-      .sort({ createdAt: -1 }) // Sort by creation date, newest first
-      .lean(); // Use lean() for better performance since we only need the text field
+    const journalTexts = await Journal.find({}, 'text')
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // Extract just the text values into an array
     const texts = journalTexts.map(entry => entry.text);
-
     res.json({ texts });
   } catch (error) {
     console.error('Error fetching journal texts:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 // Profile Routes
 app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
@@ -323,7 +327,48 @@ app.get('/api/routines', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+app.get('/api/stories', authMiddleware, async (req, res) => {
+  try {
+    const stories = await Story.find({ userId: req.userId }).sort({ createdAt: -1 });
+    res.json(stories);
+  } catch (error) {
+    console.error('Error fetching stories:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
+app.post('/api/stories', authMiddleware, async (req, res) => {
+  try {
+    const { pages, mood, backdrop } = req.body;
+    if (!pages || !mood || !backdrop) {
+      return res.status(400).json({ message: 'Pages, mood, and backdrop are required' });
+    }
+    const story = new Story({
+      userId: req.userId,
+      pages,
+      mood,
+      backdrop,
+    });
+    await story.save();
+    res.status(201).json({ message: 'Story saved successfully', story });
+  } catch (error) {
+    console.error('Error saving story:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+const StoryGenerator = require('./storyteller').StoryGenerator;
+
+app.get('/api/story/:mood', authMiddleware, async (req, res) => {
+  try {
+    const { mood } = req.params;
+    const generator = new StoryGenerator();
+    const story = await generator.generate(mood);
+    res.json({ story });
+  } catch (error) {
+    console.error("Error generating story:", error);
+    res.status(500).json({ message: "Failed to generate story" });
+  }
+});
 // WebSocket Server and Face Recognition Routes
 const server = app.listen(process.env.PORT || 5000, () => {
   console.log(`Server running on port ${server.address().port}`);
@@ -423,7 +468,17 @@ app.get('/api/captured-frame', (req, res) => {
     res.status(404).json({ error: 'Frame not found' });
   }
 });
-
+app.get('/api/story/:mood', async (req, res) => {
+  try {
+    const { mood } = req.params;
+    const generator = new StoryGenerator();
+    const story = await generator.generate(mood);
+    res.json({ story });
+  } catch (error) {
+    console.error("Error generating story:", error);
+    res.status(500).json({ message: "Failed to generate story", error: error.message });
+  }
+});
 // Cleanup on server shutdown
 process.on('SIGINT', async () => {
   console.log('Shutting down server...');
