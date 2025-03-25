@@ -71,9 +71,38 @@ const JournalingComponent = () => {
     { label: "Autumn Leaves", value: "leaves" }
   ];
 
-  // Fetch memories and set prompts
+  // Fetch memories only if authenticated
+  const fetchMemories = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Please log in to view your memories.');
+      return;
+    }
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.get('http://localhost:5000/api/journal', config);
+      setMemories(response.data);
+      setError(''); // Clear error on success
+    } catch (error) {
+      console.error('Error fetching memories:', error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        setError('Session expired. Please log in again.');
+        localStorage.removeItem('token');
+      } else {
+        setError('Failed to fetch memories. Please try again later.');
+      }
+    }
+  };
+
+  // Initial setup with conditional fetch
   useEffect(() => {
-    fetchMemories();
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchMemories();
+    } else {
+      setError('Please log in to start preserving your memories.');
+    }
 
     const randomIndex = Math.floor(Math.random() * journalPrompts.length);
     setPrompt(journalPrompts[randomIndex]);
@@ -103,24 +132,52 @@ const JournalingComponent = () => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'frameCaptured') {
-            fetch('http://localhost:5000/api/captured-frame')
-              .then(response => response.blob())
-              .then(blob => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  setImage(reader.result);
-                  setCapturing(false);
-                  const shutterSound = new Audio('/sounds/camera-shutter.mp3');
-                  shutterSound.volume = 0.5;
-                  shutterSound.play().catch(e => console.log('Audio play prevented:', e));
-                };
-                reader.readAsDataURL(blob);
+            const token = localStorage.getItem('token');
+            if (!token) {
+              setError('Please log in to capture photos.');
+              setCapturing(false);
+              return;
+            }
+            // Fetch the image from the server's endpoint with a delay
+            setTimeout(() => {
+              fetch('http://localhost:5000/api/captured-frame', {
+                headers: { Authorization: `Bearer ${token}` }
               })
-              .catch(err => {
-                console.error('Error fetching captured frame:', err);
-                setError('Failed to load captured image.');
-                setCapturing(false);
-              });
+                .then(response => {
+                  if (!response.ok) {
+                    if (response.status === 401) {
+                      throw new Error('Unauthorized: Please log in again.');
+                    } else if (response.status === 404) {
+                      throw new Error('Captured frame not found on server.');
+                    }
+                    throw new Error('Failed to fetch frame');
+                  }
+                  return response.blob();
+                })
+                .then(blob => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setImage(reader.result);
+                    setCapturing(false);
+                    const shutterSound = new Audio('/sounds/camera-shutter.mp3');
+                    shutterSound.volume = 0.5;
+                    shutterSound.play().catch(e => console.log('Audio play prevented:', e));
+                  };
+                  reader.readAsDataURL(blob);
+                })
+                .catch(err => {
+                  console.error('Error fetching captured frame:', err.message);
+                  if (err.message.includes('Unauthorized')) {
+                    setError('Session expired. Please log in again.');
+                    localStorage.removeItem('token');
+                  } else if (err.message.includes('not found')) {
+                    setError('Captured image not found on server. Please try capturing again.');
+                  } else {
+                    setError('Failed to load captured image: ' + err.message);
+                  }
+                  setCapturing(false);
+                });
+            }, 2000); // Increased delay to 2 seconds to ensure file is renamed
           } else if (data.type === 'faceRecognition') {
             console.log('Face recognition result:', data.result);
             if (data.result.faces) {
@@ -208,16 +265,6 @@ const JournalingComponent = () => {
     };
   }, []);
 
-  const fetchMemories = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/journal');
-      setMemories(response.data);
-    } catch (error) {
-      console.error('Error fetching memories:', error);
-      setError('Failed to fetch memories. Please try again.');
-    }
-  };
-
   const handleCapturePhoto = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -256,19 +303,31 @@ const JournalingComponent = () => {
   };
 
   const handleCaptureFromWebcam = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Please log in to use webcam capture.');
+      return;
+    }
+
     setCapturing(true);
     try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Capture timed out')), 30000); // Increased timeout
+        setTimeout(() => reject(new Error('Capture timed out')), 90000); // Increased to 90 seconds
       });
 
       await Promise.race([
-        axios.post('http://localhost:5000/api/face-recognition/capture'),
+        axios.post('http://localhost:5000/api/face-recognition/capture', {}, config),
         timeoutPromise
       ]);
     } catch (error) {
-      console.error('Error capturing frame from webcam:', error);
-      setError('Failed to capture image from webcam. Please try again.');
+      console.error('Error capturing frame from webcam:', error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        setError('Session expired. Please log in again.');
+        localStorage.removeItem('token');
+      } else {
+        setError('Failed to capture image from webcam: ' + (error.response?.data?.error || error.message));
+      }
       setCapturing(false);
     }
   };
@@ -331,10 +390,17 @@ const JournalingComponent = () => {
       return;
     }
 
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Please log in to save your memory.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       const response = await axios.post(
         'http://localhost:5000/api/journal',
         { 
@@ -344,7 +410,8 @@ const JournalingComponent = () => {
           filter,
           isFavorited,
           weatherEffect
-        }
+        },
+        config
       );
 
       setSuccess('✨ Memory beautifully preserved!');
@@ -364,10 +431,14 @@ const JournalingComponent = () => {
         setWeatherEffect('');
         fetchMemories();
       }, 2000);
-
     } catch (error) {
-      console.error('Error saving memory:', error);
-      setError('Unable to save your memory. Please try again.');
+      console.error('Error saving memory:', error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        setError('Session expired. Please log in again.');
+        localStorage.removeItem('token');
+      } else {
+        setError('Unable to save your memory. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -451,6 +522,14 @@ const JournalingComponent = () => {
         {error && (
           <div className="error-message">
             <span>⚠️ {error}</span>
+            {error.includes('log in') && (
+              <button 
+                className="login-prompt-button"
+                onClick={() => window.location.href = '/login'}
+              >
+                Log In
+              </button>
+            )}
           </div>
         )}
 
