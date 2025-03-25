@@ -1,3 +1,4 @@
+// server/server.js
 const express = require('express');
 const axios = require('axios');
 const mongoose = require('mongoose');
@@ -357,15 +358,21 @@ wss.on('connection', (ws) => {
 
 app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
-  const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python3';
+  const defaultPythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+  const pythonCommand = process.env.PYTHON_EXECUTABLE || defaultPythonCommand;
   const pythonCwd = path.join(__dirname, '..', 'ai', 'Face_Recognition');
   const userFramePath = path.join(pythonCwd, `captured_frame_${req.userId}.jpg`);
+  const originalFramePath = path.join(pythonCwd, 'captured_frame.jpg');
 
   console.log(`Using Python executable: ${pythonCommand}`);
   console.log(`Python script path: ${pythonPath}`);
   console.log(`Python working directory: ${pythonCwd}`);
+  console.log(`User frame path: ${userFramePath}`);
 
   let pythonProcess;
+  let responseSent = false;
+  let frameCaptured = false;
+
   try {
     pythonProcess = spawn(pythonCommand, [pythonPath], {
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
@@ -373,9 +380,14 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
     });
   } catch (error) {
     console.error('Error spawning Python process:', error);
-    return res.status(500).json({ error: 'Failed to start webcam capture: Python executable not found.' });
+    if (!responseSent) {
+      responseSent = true;
+      res.status(500).json({ error: 'Failed to start webcam capture: Check Python executable.' });
+    }
+    return;
   }
 
+  // First phase: Capture the frame
   pythonProcess.stdin.write('4\n');
 
   let output = '';
@@ -389,11 +401,25 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
         const result = JSON.parse(line);
         if (result.status === 'frame_captured') {
           console.log('Frame captured:', result.path);
-          wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ type: 'frameCaptured', path: userFramePath }));
+          try {
+            if (fs.existsSync(originalFramePath)) {
+              fs.renameSync(originalFramePath, userFramePath);
+              console.log(`Successfully renamed ${originalFramePath} to ${userFramePath}`);
+              frameCaptured = true;
+              // Notify client via WebSocket
+              wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({ type: 'frameCaptured', path: userFramePath }));
+                }
+              });
+              // Tell Python script to proceed with face recognition using the renamed file
+              pythonProcess.stdin.write(`${userFramePath}\n`);
+            } else {
+              console.error(`Original frame not found at ${originalFramePath}`);
             }
-          });
+          } catch (renameError) {
+            console.error('Error renaming captured frame:', renameError);
+          }
         } else if (result.status === 'success') {
           console.log('Face recognition result:', result);
           wss.clients.forEach(client => {
@@ -412,24 +438,40 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
     const errorStr = data.toString();
     errorOutput += errorStr;
     console.error(`Python error: ${errorStr}`);
-    if (errorStr.includes('ModuleNotFoundError')) {
+    if (errorStr.includes('ModuleNotFoundError') && !responseSent) {
       pythonProcess.kill();
+      responseSent = true;
       res.status(500).json({ error: 'Face recognition failed: Missing Python dependencies.' });
     }
   });
 
   pythonProcess.on('error', (error) => {
     console.error('Python process error:', error);
-    res.status(500).json({ error: 'Webcam capture process failed to start.' });
+    if (!responseSent) {
+      responseSent = true;
+      res.status(500).json({ error: 'Webcam capture process failed to start.' });
+    }
   });
 
   pythonProcess.on('close', (code) => {
-    if (code === 0) {
-      res.status(200).json({ message: 'Webcam capture and processing completed', output });
-    } else {
-      res.status(500).json({ error: 'Webcam capture failed', code, errorOutput });
+    if (!responseSent) {
+      responseSent = true;
+      if (code === 0 && frameCaptured) {
+        res.status(200).json({ message: 'Webcam capture and processing completed', output });
+      } else {
+        res.status(500).json({ error: 'Webcam capture failed', code, errorOutput });
+      }
     }
   });
+
+  // Server-side timeout
+  setTimeout(() => {
+    if (!responseSent) {
+      pythonProcess.kill();
+      responseSent = true;
+      res.status(504).json({ error: 'Webcam capture timed out on server' });
+    }
+  }, 90000); // 90 seconds
 });
 
 app.get('/api/captured-frame', authMiddleware, (req, res) => {
@@ -443,7 +485,7 @@ app.get('/api/captured-frame', authMiddleware, (req, res) => {
 
 app.get('/api/weather', authMiddleware, async (req, res) => {
   const { lat, lon } = req.query;
-  const apiKey = "c44cebc35c234334be13aec7ebf742d1";
+  const apiKey = process.env.OPENWEATHER_API_KEY || 'c44cebc35c234334be13aec7ebf742d1'; // Use env or fallback
   if (!apiKey) {
     return res.status(500).json({ message: 'Weather API key not configured' });
   }
