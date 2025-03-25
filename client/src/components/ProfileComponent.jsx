@@ -1,7 +1,6 @@
-// client/src/components/ProfileComponent.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import '../styles/ProfileStyles.css'; // New CSS file
+import '../styles/ProfileStyles.css';
 
 const ProfileComponent = () => {
   const [profile, setProfile] = useState({});
@@ -79,7 +78,7 @@ const ProfileComponent = () => {
           <PersonalInfoForm profile={profile} onSave={(data) => handleUpdate('personal', data)} />
         ) : (
           <div>
-            <p><strong>Name:</strong> {profile.preferredName || profile.name}</p>
+            <p><strong>Name:</strong> {profile.preferredName || 'Not set'}</p>
             <p><strong>Birthday:</strong> {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not set'}</p>
             <p><strong>Location:</strong> {profile.location || 'Not set'}</p>
             <button className="edit-button" onClick={() => setEditMode(true)}>Edit</button>

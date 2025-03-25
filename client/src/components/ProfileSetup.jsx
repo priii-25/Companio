@@ -1,10 +1,8 @@
-// client/src/components/ProfileSetup.jsx
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import '../styles/ProfileSetup.css';
 
-const ProfileSetup = () => {
+const ProfileSetup = ({ onSubmit }) => {
   const [step, setStep] = useState(1);
   const [profileData, setProfileData] = useState({
     preferredName: '',
@@ -22,15 +20,17 @@ const ProfileSetup = () => {
 
   const handleChange = (e, section, index) => {
     const { name, value } = e.target;
+
     if (section === 'simple') {
       setProfileData({ ...profileData, [name]: value });
     } else if (section === 'array') {
-      const updatedArray = [...profileData[name]];
+      const updatedArray = [...(profileData[name] || [])];
       updatedArray[index] = value;
       setProfileData({ ...profileData, [name]: updatedArray });
     } else if (section === 'objectArray') {
+      const field = e.target.dataset.field;
       const updatedArray = [...profileData[name]];
-      updatedArray[index][e.target.dataset.field] = value;
+      updatedArray[index] = { ...updatedArray[index], [field]: value };
       setProfileData({ ...profileData, [name]: updatedArray });
     } else if (section === 'accessibility') {
       setProfileData({
@@ -50,25 +50,15 @@ const ProfileSetup = () => {
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
 
-  const handleSubmit = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(
-        'http://localhost:5000/api/profile',
-        profileData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setSuccess('✨ Profile set up successfully! Welcome to your journey...');
-      setTimeout(() => navigate('/journal'), 2000);
-    } catch (err) {
-      setError('Failed to save profile. Please try again.');
-      console.error(err);
-    }
+  const handleSubmit = () => {
+    setSuccess('✨ Profile set up successfully! Welcome to your journey...');
+    onSubmit(profileData);
+    setTimeout(() => navigate('/journal'), 1000); // Redirect to journal after setup
   };
 
   const renderStep = () => {
     switch (step) {
-      case 1: // Personal Information
+      case 1:
         return (
           <div className="setup-step">
             <h2>Let’s Get to Know You</h2>
@@ -102,7 +92,7 @@ const ProfileSetup = () => {
             <button className="next-button" onClick={handleNext}>Next</button>
           </div>
         );
-      case 2: // Medical & Emergency Information
+      case 2:
         return (
           <div className="setup-step">
             <h2>Your Health Matters</h2>
@@ -111,13 +101,15 @@ const ProfileSetup = () => {
               <input
                 value={profileData.medicalHistory[0].condition}
                 data-field="condition"
-                onChange={(e) => handleChange(e, 'objectArray', 0, 'medicalHistory')}
+                name="medicalHistory"
+                onChange={(e) => handleChange(e, 'objectArray', 0)}
                 placeholder="e.g., Diabetes"
               />
               <input
                 value={profileData.medicalHistory[0].notes}
                 data-field="notes"
-                onChange={(e) => handleChange(e, 'objectArray', 0, 'medicalHistory')}
+                name="medicalHistory"
+                onChange={(e) => handleChange(e, 'objectArray', 0)}
                 placeholder="Any notes?"
               />
             </div>
@@ -126,13 +118,15 @@ const ProfileSetup = () => {
               <input
                 value={profileData.medications[0].name}
                 data-field="name"
-                onChange={(e) => handleChange(e, 'objectArray', 0, 'medications')}
+                name="medications"
+                onChange={(e) => handleChange(e, 'objectArray', 0)}
                 placeholder="e.g., Aspirin"
               />
               <input
                 value={profileData.medications[0].schedule}
                 data-field="schedule"
-                onChange={(e) => handleChange(e, 'objectArray', 0, 'medications')}
+                name="medications"
+                onChange={(e) => handleChange(e, 'objectArray', 0)}
                 placeholder="e.g., Daily at 8 AM"
               />
             </div>
@@ -140,7 +134,8 @@ const ProfileSetup = () => {
               <label>Allergy:</label>
               <input
                 value={profileData.allergies[0]}
-                onChange={(e) => handleChange(e, 'array', 0, 'allergies')}
+                name="allergies"
+                onChange={(e) => handleChange(e, 'array', 0)}
                 placeholder="e.g., Peanuts"
               />
             </div>
@@ -149,13 +144,15 @@ const ProfileSetup = () => {
               <input
                 value={profileData.caregiverContacts[0].name}
                 data-field="name"
-                onChange={(e) => handleChange(e, 'objectArray', 0, 'caregiverContacts')}
+                name="caregiverContacts"
+                onChange={(e) => handleChange(e, 'objectArray', 0)}
                 placeholder="Name"
               />
               <input
                 value={profileData.caregiverContacts[0].phone}
                 data-field="phone"
-                onChange={(e) => handleChange(e, 'objectArray', 0, 'caregiverContacts')}
+                name="caregiverContacts"
+                onChange={(e) => handleChange(e, 'objectArray', 0)}
                 placeholder="Phone"
               />
             </div>
@@ -163,7 +160,7 @@ const ProfileSetup = () => {
             <button className="next-button" onClick={handleNext}>Next</button>
           </div>
         );
-      case 3: // Accessibility Settings
+      case 3:
         return (
           <div className="setup-step">
             <h2>Make It Comfortable</h2>
