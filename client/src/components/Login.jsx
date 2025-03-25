@@ -26,7 +26,7 @@ const AnimatedIcon = ({ path }) => (
   </svg>
 );
 
-const Login = ({ setIsAuthenticated, switchToSignup }) => {
+const Login = ({ switchToSignup, onLoginSuccess }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '', general: '' });
   const [loading, setLoading] = useState(false);
@@ -58,7 +58,6 @@ const Login = ({ setIsAuthenticated, switchToSignup }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-
     setErrors({ ...errors, [name]: '', general: '' });
 
     if (name === 'email' && value && !validateEmail(value)) {
@@ -87,22 +86,16 @@ const Login = ({ setIsAuthenticated, switchToSignup }) => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/users/login', formData, { timeout: 10000 });
-      localStorage.setItem('token', response.data.token);
-      document.querySelector('.auth-card').classList.add('success-animation');
-      setTimeout(() => {
-        setIsAuthenticated(true);
-        setLoading(false);
-      }, 1000);
+      const response = await axios.post('http://localhost:5000/api/users/login', formData, { timeout: 10000 });
+      const { token } = response.data;
+      onLoginSuccess(token);
+      setLoading(false);
     } catch (err) {
       setLoading(false);
       setErrors({
         ...errors,
         general: err.code === 'ECONNABORTED' ? 'Request timed out. Please try again.' : 'Login failed. Please check your email and password.',
       });
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Login error:', err.response?.data || err.message);
-      }
     }
   };
 

@@ -1,7 +1,5 @@
-// client/src/components/Signup.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import './AuthStyles.css';
 
 const comfortingQuotes = [
@@ -29,7 +27,7 @@ const AnimatedIcon = ({ path }) => (
   </svg>
 );
 
-const Signup = ({ setIsAuthenticated, switchToLogin }) => {
+const Signup = ({ switchToLogin, onNext }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -44,7 +42,6 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [formProgress, setFormProgress] = useState(0);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * comfortingQuotes.length);
@@ -96,14 +93,18 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
       localStorage.setItem('token', response.data.token);
       setSuccess('✨ Account created successfully! Let’s set up your profile...');
       document.querySelector('.auth-card').classList.add('success-animation');
-      setLoading(false);
       setTimeout(() => {
-        setIsAuthenticated(true);
-        navigate('/profile-setup');
+        onNext({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+        });
       }, 2500);
     } catch (err) {
       setLoading(false);
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -157,7 +158,7 @@ const Signup = ({ setIsAuthenticated, switchToLogin }) => {
               onChange={handleChange} 
               placeholder="Enter your email address"
               onFocus={() => setFocusedField('email')}
-              onBlur={() => setFocusedField(null)} // Completed this line
+              onBlur={() => setFocusedField(null)}
               required 
             />
             <div className="input-focus-effect"></div>
