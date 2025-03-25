@@ -114,6 +114,20 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+// WebSocket Server
+const server = app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server running on port ${server.address().port}`);
+});
+
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (ws) => {
+  console.log('WebSocket client connected');
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+  });
+});
+
 // Public Routes
 app.post('/api/users/register', async (req, res) => {
   try {
@@ -314,6 +328,20 @@ app.post('/api/stories', authMiddleware, async (req, res) => {
   }
 });
 
+const StoryGenerator = require('./storyteller').StoryGenerator;
+
+app.get('/api/story/:mood', authMiddleware, async (req, res) => {
+  try {
+    const { mood } = req.params;
+    const generator = new StoryGenerator();
+    const story = await generator.generate(mood);
+    res.json({ story });
+  } catch (error) {
+    console.error("Error generating story:", error);
+    res.status(500).json({ message: "Failed to generate story" });
+  }
+});
+
 // Face Recognition Routes (Protected)
 app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
@@ -352,10 +380,12 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   let frameCaptured = false;
 
   try {
-    pythonProcess = spawn(pythonCommand, [pythonPath], {
+    // Quote the pythonCommand to handle spaces in the path
+    const quotedPythonCommand = `"${pythonCommand}"`;
+    pythonProcess = spawn(quotedPythonCommand, [pythonPath], {
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
       cwd: pythonCwd,
-      shell: process.platform === 'win32' // Use shell on Windows to handle PATH resolution
+      shell: true // Use shell to handle quoted command
     });
   } catch (error) {
     console.error('Error spawning Python process:', error);
@@ -480,20 +510,6 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
     console.error('Error fetching weather:', error);
     res.status(500).json({ message: 'Failed to fetch weather data' });
   }
-});
-
-// WebSocket Server
-const server = app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${server.address().port}`);
-});
-
-const wss = new WebSocket.Server({ server });
-
-wss.on('connection', (ws) => {
-  console.log('WebSocket client connected');
-  ws.on('close', () => {
-    console.log('WebSocket client disconnected');
-  });
 });
 
 // Cleanup on server shutdown
