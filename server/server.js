@@ -1,4 +1,3 @@
-// server/server.js
 const express = require('express');
 const axios = require('axios');
 const mongoose = require('mongoose');
@@ -23,7 +22,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// User Schema with Profile Fields
+// User Schema
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -100,24 +99,34 @@ const Story = mongoose.model('Story', storySchema);
 // Middleware to verify JWT
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ message: 'No token provided' });
+  if (!token) {
+    console.log('No token provided for route:', req.path);
+    return res.status(401).json({ message: 'No token provided' });
+  }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
+    console.log('Token validated for user:', req.userId);
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    console.error('Invalid token for route:', req.path, error);
+    return res.status(401).json({ message: 'Invalid token' });
   }
 };
 
-// Public Routes (No authMiddleware)
+// Public Routes
 app.post('/api/users/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, profile } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
-    const user = new User({ name, email, password });
+    const user = new User({
+      name,
+      email,
+      password,
+      profile: profile || {},
+    });
     await user.save();
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -152,29 +161,17 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Protected Routes (with authMiddleware)
+// Protected Routes
 app.post('/api/journal', authMiddleware, async (req, res) => {
   try {
     const { image, text, mood, filter, isFavorited, weatherEffect } = req.body;
-    if (!image || !text) {
-      return res.status(400).json({ message: 'Image and text are required' });
-    }
-
-    const journalEntry = new Journal({
-      userId: req.userId,
-      image,
-      text,
-      mood,
-      filter,
-      isFavorited,
-      weatherEffect,
-    });
-
+    if (!image || !text) return res.status(400).json({ message: 'Image and text are required' });
+    const journalEntry = new Journal({ userId: req.userId, image, text, mood, filter, isFavorited, weatherEffect });
     await journalEntry.save();
     res.status(201).json({ message: 'Journal entry saved successfully', journalEntry });
   } catch (error) {
     console.error('Error saving journal:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -190,9 +187,7 @@ app.get('/api/journal', authMiddleware, async (req, res) => {
 
 app.get('/api/journal/texts', authMiddleware, async (req, res) => {
   try {
-    const journalTexts = await Journal.find({ userId: req.userId }, 'text')
-      .sort({ createdAt: -1 })
-      .lean();
+    const journalTexts = await Journal.find({ userId: req.userId }, 'text').sort({ createdAt: -1 }).lean();
     const texts = journalTexts.map(entry => entry.text);
     res.json({ texts });
   } catch (error) {
@@ -217,7 +212,6 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
     const updates = req.body;
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
-
     user.profile = { ...user.profile, ...updates };
     await user.save();
     res.json({ message: 'Profile updated successfully', profile: user.profile });
@@ -236,7 +230,6 @@ app.get('/api/profile/insights', authMiddleware, async (req, res) => {
       { $match: { userId: mongoose.Types.ObjectId(userId) } },
       { $group: { _id: '$mood', count: { $sum: 1 } } }
     ]);
-
     const insights = {
       totalMemories: journalCount,
       favoriteMemories: favoriteCount,
@@ -245,7 +238,6 @@ app.get('/api/profile/insights', authMiddleware, async (req, res) => {
         return acc;
       }, {})
     };
-
     res.json(insights);
   } catch (error) {
     console.error('Error fetching insights:', error);
@@ -268,7 +260,6 @@ app.post('/api/routines/:date', authMiddleware, async (req, res) => {
   try {
     const { date } = req.params;
     const { routines } = req.body;
-
     let routineDoc = await Routine.findOne({ userId: req.userId, date });
     if (routineDoc) {
       routineDoc.routines = routines;
@@ -314,12 +305,7 @@ app.post('/api/stories', authMiddleware, async (req, res) => {
     if (!pages || !mood || !backdrop) {
       return res.status(400).json({ message: 'Pages, mood, and backdrop are required' });
     }
-    const story = new Story({
-      userId: req.userId,
-      pages,
-      mood,
-      backdrop,
-    });
+    const story = new Story({ userId: req.userId, pages, mood, backdrop });
     await story.save();
     res.status(201).json({ message: 'Story saved successfully', story });
   } catch (error) {
@@ -328,34 +314,7 @@ app.post('/api/stories', authMiddleware, async (req, res) => {
   }
 });
 
-const StoryGenerator = require('./storyteller').StoryGenerator;
-
-app.get('/api/story/:mood', authMiddleware, async (req, res) => {
-  try {
-    const { mood } = req.params;
-    const generator = new StoryGenerator();
-    const story = await generator.generate(mood);
-    res.json({ story });
-  } catch (error) {
-    console.error("Error generating story:", error);
-    res.status(500).json({ message: "Failed to generate story" });
-  }
-});
-
-// WebSocket Server and Face Recognition Routes
-const server = app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${server.address().port}`);
-});
-
-const wss = new WebSocket.Server({ server });
-
-wss.on('connection', (ws) => {
-  console.log('WebSocket client connected');
-  ws.on('close', () => {
-    console.log('WebSocket client disconnected');
-  });
-});
-
+// Face Recognition Routes (Protected)
 app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
   const defaultPythonCommand = process.platform === 'win32' ? 'python' : 'python3';
@@ -387,7 +346,6 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
     return;
   }
 
-  // First phase: Capture the frame
   pythonProcess.stdin.write('4\n');
 
   let output = '';
@@ -406,13 +364,11 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
               fs.renameSync(originalFramePath, userFramePath);
               console.log(`Successfully renamed ${originalFramePath} to ${userFramePath}`);
               frameCaptured = true;
-              // Notify client via WebSocket
               wss.clients.forEach(client => {
                 if (client.readyState === WebSocket.OPEN) {
                   client.send(JSON.stringify({ type: 'frameCaptured', path: userFramePath }));
                 }
               });
-              // Tell Python script to proceed with face recognition using the renamed file
               pythonProcess.stdin.write(`${userFramePath}\n`);
             } else {
               console.error(`Original frame not found at ${originalFramePath}`);
@@ -464,14 +420,13 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
     }
   });
 
-  // Server-side timeout
   setTimeout(() => {
     if (!responseSent) {
       pythonProcess.kill();
       responseSent = true;
       res.status(504).json({ error: 'Webcam capture timed out on server' });
     }
-  }, 90000); // 90 seconds
+  }, 90000);
 });
 
 app.get('/api/captured-frame', authMiddleware, (req, res) => {
@@ -485,7 +440,7 @@ app.get('/api/captured-frame', authMiddleware, (req, res) => {
 
 app.get('/api/weather', authMiddleware, async (req, res) => {
   const { lat, lon } = req.query;
-  const apiKey = process.env.OPENWEATHER_API_KEY || 'c44cebc35c234334be13aec7ebf742d1'; // Use env or fallback
+  const apiKey = process.env.OPENWEATHER_API_KEY || 'c44cebc35c234334be13aec7ebf742d1';
   if (!apiKey) {
     return res.status(500).json({ message: 'Weather API key not configured' });
   }
@@ -504,6 +459,20 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
     console.error('Error fetching weather:', error);
     res.status(500).json({ message: 'Failed to fetch weather data' });
   }
+});
+
+// WebSocket Server
+const server = app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server running on port ${server.address().port}`);
+});
+
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (ws) => {
+  console.log('WebSocket client connected');
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+  });
 });
 
 // Cleanup on server shutdown
