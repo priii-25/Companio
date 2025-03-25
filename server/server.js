@@ -59,7 +59,7 @@ const User = mongoose.model('User', userSchema);
 
 // Routine Schema
 const routineSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   date: { type: String, required: true },
   routines: [{
     time: { type: String, required: true },
@@ -73,7 +73,7 @@ const Routine = mongoose.model('Routine', routineSchema);
 
 // Journal Schema
 const journalSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   image: { type: String, required: true },
   text: { type: String, required: true },
   mood: { type: String },
@@ -84,9 +84,10 @@ const journalSchema = new mongoose.Schema({
 });
 
 const Journal = mongoose.model('Journal', journalSchema);
-// Story Schema (New)
+
+// Story Schema
 const storySchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   pages: [{ type: String, required: true }],
   mood: { type: String, required: true },
   backdrop: { type: String, required: true },
@@ -94,6 +95,7 @@ const storySchema = new mongoose.Schema({
 });
 
 const Story = mongoose.model('Story', storySchema);
+
 // Middleware to verify JWT
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -107,7 +109,7 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// Routes
+// Public Routes (No authMiddleware)
 app.post('/api/users/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -149,30 +151,16 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Journal Routes
-app.post('/api/journal', async (req, res) => {
+// Protected Routes (with authMiddleware)
+app.post('/api/journal', authMiddleware, async (req, res) => {
   try {
-    console.log('Received request to /api/journal');
-    console.log('Body:', req.body);
     const { image, text, mood, filter, isFavorited, weatherEffect } = req.body;
     if (!image || !text) {
-      console.log('Missing image or text');
       return res.status(400).json({ message: 'Image and text are required' });
     }
 
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    let userId;
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        userId = decoded.userId;
-      } catch (error) {
-        console.log('Invalid token, proceeding without userId');
-      }
-    }
-
     const journalEntry = new Journal({
-      userId,
+      userId: req.userId,
       image,
       text,
       mood,
@@ -182,7 +170,6 @@ app.post('/api/journal', async (req, res) => {
     });
 
     await journalEntry.save();
-    console.log('Journal entry saved:', journalEntry);
     res.status(201).json({ message: 'Journal entry saved successfully', journalEntry });
   } catch (error) {
     console.error('Error saving journal:', error);
@@ -190,26 +177,9 @@ app.post('/api/journal', async (req, res) => {
   }
 });
 
-app.get('/api/journal', async (req, res) => {
+app.get('/api/journal', authMiddleware, async (req, res) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    let journalEntries;
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.userId;
-        journalEntries = await Journal.find({ userId }).sort({ createdAt: -1 });
-        if (!journalEntries.length) {
-          console.log('No user-specific entries found, falling back to all');
-          journalEntries = await Journal.find().sort({ createdAt: -1 });
-        }
-      } catch (error) {
-        console.log('Invalid token, fetching all journals');
-        journalEntries = await Journal.find().sort({ createdAt: -1 });
-      }
-    } else {
-      journalEntries = await Journal.find().sort({ createdAt: -1 });
-    }
+    const journalEntries = await Journal.find({ userId: req.userId }).sort({ createdAt: -1 });
     res.json(journalEntries);
   } catch (error) {
     console.error('Error fetching journal entries:', error);
@@ -217,12 +187,11 @@ app.get('/api/journal', async (req, res) => {
   }
 });
 
-app.get('/api/journal/texts', async (req, res) => {
+app.get('/api/journal/texts', authMiddleware, async (req, res) => {
   try {
-    const journalTexts = await Journal.find({}, 'text')
+    const journalTexts = await Journal.find({ userId: req.userId }, 'text')
       .sort({ createdAt: -1 })
       .lean();
-
     const texts = journalTexts.map(entry => entry.text);
     res.json({ texts });
   } catch (error) {
@@ -230,7 +199,7 @@ app.get('/api/journal/texts', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-// Profile Routes
+
 app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
@@ -283,7 +252,6 @@ app.get('/api/profile/insights', authMiddleware, async (req, res) => {
   }
 });
 
-// Routine Routes
 app.get('/api/routines/:date', authMiddleware, async (req, res) => {
   try {
     const { date } = req.params;
@@ -328,6 +296,7 @@ app.get('/api/routines', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 app.get('/api/stories', authMiddleware, async (req, res) => {
   try {
     const stories = await Story.find({ userId: req.userId }).sort({ createdAt: -1 });
@@ -357,6 +326,7 @@ app.post('/api/stories', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 const StoryGenerator = require('./storyteller').StoryGenerator;
 
 app.get('/api/story/:mood', authMiddleware, async (req, res) => {
@@ -370,6 +340,7 @@ app.get('/api/story/:mood', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Failed to generate story" });
   }
 });
+
 // WebSocket Server and Face Recognition Routes
 const server = app.listen(process.env.PORT || 5000, () => {
   console.log(`Server running on port ${server.address().port}`);
@@ -384,15 +355,15 @@ wss.on('connection', (ws) => {
   });
 });
 
-app.post('/api/face-recognition/capture', (req, res) => {
+app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
   const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python3';
   const pythonCwd = path.join(__dirname, '..', 'ai', 'Face_Recognition');
-  
+  const userFramePath = path.join(pythonCwd, `captured_frame_${req.userId}.jpg`);
+
   console.log(`Using Python executable: ${pythonCommand}`);
   console.log(`Python script path: ${pythonPath}`);
   console.log(`Python working directory: ${pythonCwd}`);
-  console.log(`Environment PATH: ${process.env.PATH}`);
 
   let pythonProcess;
   try {
@@ -420,7 +391,7 @@ app.post('/api/face-recognition/capture', (req, res) => {
           console.log('Frame captured:', result.path);
           wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ type: 'frameCaptured', path: result.path }));
+              client.send(JSON.stringify({ type: 'frameCaptured', path: userFramePath }));
             }
           });
         } else if (result.status === 'success') {
@@ -443,7 +414,7 @@ app.post('/api/face-recognition/capture', (req, res) => {
     console.error(`Python error: ${errorStr}`);
     if (errorStr.includes('ModuleNotFoundError')) {
       pythonProcess.kill();
-      res.status(500).json({ error: 'Face recognition failed: Missing Python dependencies (e.g., tensorflow). Please install them.' });
+      res.status(500).json({ error: 'Face recognition failed: Missing Python dependencies.' });
     }
   });
 
@@ -461,28 +432,18 @@ app.post('/api/face-recognition/capture', (req, res) => {
   });
 });
 
-app.get('/api/captured-frame', (req, res) => {
-  const framePath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'captured_frame.jpg');
+app.get('/api/captured-frame', authMiddleware, (req, res) => {
+  const framePath = path.join(__dirname, '..', 'ai', 'Face_Recognition', `captured_frame_${req.userId}.jpg`);
   if (fs.existsSync(framePath)) {
     res.sendFile(framePath);
   } else {
     res.status(404).json({ error: 'Frame not found' });
   }
 });
-app.get('/api/story/:mood', async (req, res) => {
-  try {
-    const { mood } = req.params;
-    const generator = new StoryGenerator();
-    const story = await generator.generate(mood);
-    res.json({ story });
-  } catch (error) {
-    console.error("Error generating story:", error);
-    res.status(500).json({ message: "Failed to generate story", error: error.message });
-  }
-});
-app.get('/api/weather', async (req, res) => {
-  const { lat, lon } = req.query; 
-  const apiKey = "process.env.OPENWEATHER_API_KEY"; 
+
+app.get('/api/weather', authMiddleware, async (req, res) => {
+  const { lat, lon } = req.query;
+  const apiKey = "c44cebc35c234334be13aec7ebf742d1";
   if (!apiKey) {
     return res.status(500).json({ message: 'Weather API key not configured' });
   }
@@ -502,6 +463,7 @@ app.get('/api/weather', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch weather data' });
   }
 });
+
 // Cleanup on server shutdown
 process.on('SIGINT', async () => {
   console.log('Shutting down server...');
