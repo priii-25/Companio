@@ -2,11 +2,11 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import os
+import sys
+import json
 from mtcnn import MTCNN
 import openpyxl
 import xlrd
-import json
-import sys
 from ultralytics import YOLO
 
 # TensorFlow session setup
@@ -219,7 +219,7 @@ def recognize_face(sub_image):
 if val == '1':
     # Original live webcam mode (unchanged)
     camera = None
-    for i in range(3):
+    for i in range(5):
         camera = cv2.VideoCapture(i)
         if camera.isOpened():
             print(f"Webcam opened successfully on index {i}.")
@@ -289,9 +289,9 @@ elif val == '2':
         print("No match found in the database.")
 
 elif val == '4':
-    # New mode: Capture from webcam, segment, and recognize faces
+    # Mode: Capture from webcam, segment, and recognize faces
     camera = None
-    for i in range(3):
+    for i in range(5):
         camera = cv2.VideoCapture(i)
         if camera.isOpened():
             print(f"Webcam opened successfully on index {i}.")
@@ -305,7 +305,9 @@ elif val == '4':
         ret, frame = camera.read()
         if not ret:
             print("Error: Could not read frame from webcam.")
-            break
+            camera.release()
+            cv2.destroyAllWindows()
+            sys.exit(1)
 
         # Show the frame with a prompt to capture
         cv2.putText(frame, "Press 'c' to capture", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -313,28 +315,43 @@ elif val == '4':
             cv2.imshow('Webcam Capture', frame)
         except Exception as e:
             print(f"Error displaying frame: {e}")
-            break
+            camera.release()
+            cv2.destroyAllWindows()
+            sys.exit(1)
 
         # Capture on 'c' key press
         key = cv2.waitKey(1) & 0xFF
         if key == ord('c'):
             # Save the captured frame
-            cv2.imwrite("captured_frame.jpg", frame)
-            print(json.dumps({"status": "frame_captured", "path": "captured_frame.jpg"}))
-            sys.stdout.flush()
+            try:
+                cv2.imwrite("captured_frame.jpg", frame)
+                print(json.dumps({"status": "frame_captured", "path": "captured_frame.jpg"}))
+                sys.stdout.flush()
+            except Exception as e:
+                print(f"Error saving captured frame: {e}")
+                camera.release()
+                cv2.destroyAllWindows()
+                sys.exit(1)
             break
         elif key == ord('q'):
             camera.release()
             cv2.destroyAllWindows()
             sys.exit(0)
 
+    # Ensure webcam is released
     camera.release()
     cv2.destroyAllWindows()
 
-    # Process the captured image
-    captured_image = cv2.imread("captured_frame.jpg")
+    # Wait for the renamed file path from the server
+    print("Waiting for renamed file path from server...")
+    sys.stdout.flush()
+    renamed_file_path = input().strip()
+    print(f"Received renamed file path: {renamed_file_path}")
+
+    # Process the captured image using the renamed file path
+    captured_image = cv2.imread(renamed_file_path)
     if captured_image is None:
-        print("Error: Could not load captured image.")
+        print(f"Error: Could not load captured image from {renamed_file_path}.")
         sys.exit(1)
 
     # Segment the image using YOLO
@@ -347,7 +364,7 @@ elif val == '4':
         recognized_name = recognize_face(sub_img)
         face_results.append({
             "recognized": recognized_name != "Unknown",
-            "name": recognized_name
+            "name": recognized_name if recognized_name != "Unknown" else None
         })
 
     # Output the results as JSON
@@ -357,6 +374,9 @@ elif val == '4':
     }
     print(json.dumps(result))
     sys.stdout.flush()
+
+    # Explicitly exit to prevent hanging
+    sys.exit(0)
 
 else:
     print("Wrong Choice")
