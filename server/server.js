@@ -317,11 +317,30 @@ app.post('/api/stories', authMiddleware, async (req, res) => {
 // Face Recognition Routes (Protected)
 app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
-  const defaultPythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-  const pythonCommand = process.env.PYTHON_EXECUTABLE || defaultPythonCommand;
   const pythonCwd = path.join(__dirname, '..', 'ai', 'Face_Recognition');
   const userFramePath = path.join(pythonCwd, `captured_frame_${req.userId}.jpg`);
   const originalFramePath = path.join(pythonCwd, 'captured_frame.jpg');
+
+  // Determine the Python executable
+  let pythonCommand;
+  if (process.platform === 'win32') {
+    const { execSync } = require('child_process');
+    try {
+      pythonCommand = execSync('where.exe python').toString().split('\r\n')[0].trim();
+      console.log(`Found Python at: ${pythonCommand}`);
+    } catch (error) {
+      try {
+        pythonCommand = execSync('where.exe python3').toString().split('\r\n')[0].trim();
+        console.log(`Found Python3 at: ${pythonCommand}`);
+      } catch (err) {
+        console.error('Python not found on system PATH. Please ensure Python is installed and added to PATH.');
+        res.status(500).json({ error: 'Python not found on system PATH.' });
+        return;
+      }
+    }
+  } else {
+    pythonCommand = process.env.PYTHON_EXECUTABLE || 'python3';
+  }
 
   console.log(`Using Python executable: ${pythonCommand}`);
   console.log(`Python script path: ${pythonPath}`);
@@ -335,7 +354,8 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   try {
     pythonProcess = spawn(pythonCommand, [pythonPath], {
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-      cwd: pythonCwd
+      cwd: pythonCwd,
+      shell: process.platform === 'win32' // Use shell on Windows to handle PATH resolution
     });
   } catch (error) {
     console.error('Error spawning Python process:', error);
@@ -412,7 +432,7 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   pythonProcess.on('close', (code) => {
     if (!responseSent) {
       responseSent = true;
-      if (code === 0 && frameCaptured) {
+      if (code === 0) {
         res.status(200).json({ message: 'Webcam capture and processing completed', output });
       } else {
         res.status(500).json({ error: 'Webcam capture failed', code, errorOutput });
@@ -420,6 +440,7 @@ app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
     }
   });
 
+  // Server-side timeout (adjustable if needed)
   setTimeout(() => {
     if (!responseSent) {
       pythonProcess.kill();
