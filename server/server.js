@@ -481,8 +481,8 @@ app.get('/api/story/:mood', async (req, res) => {
   }
 });
 app.get('/api/weather', async (req, res) => {
-  const { lat, lon } = req.query; // Pass latitude and longitude from frontend
-  const apiKey = "process.env.OPENWEATHER_API_KEY"; // Store in .env
+  const { lat, lon } = req.query; 
+  const apiKey = "process.env.OPENWEATHER_API_KEY"; 
   if (!apiKey) {
     return res.status(500).json({ message: 'Weather API key not configured' });
   }

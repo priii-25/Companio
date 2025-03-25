@@ -28,33 +28,66 @@ const AnimatedIcon = ({ path }) => (
 
 const Login = ({ setIsAuthenticated, switchToSignup }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({ email: '', password: '', general: '' });
   const [loading, setLoading] = useState(false);
   const [quote, setQuote] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const randomIndex = Math.floor(Math.random() * comfortingQuotes.length);
     setQuote(comfortingQuotes[randomIndex]);
     const quoteInterval = setInterval(() => {
-      const newIndex = Math.floor(Math.random() * comfortingQuotes.length);
-      setQuote(comfortingQuotes[newIndex]);
+      if (isMounted) {
+        const newIndex = Math.floor(Math.random() * comfortingQuotes.length);
+        setQuote(comfortingQuotes[newIndex]);
+      }
     }, 12000);
-    return () => clearInterval(quoteInterval);
+    return () => {
+      isMounted = false;
+      clearInterval(quoteInterval);
+    };
   }, []);
 
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    setErrors({ ...errors, [name]: '', general: '' });
+
+    if (name === 'email' && value && !validateEmail(value)) {
+      setErrors({ ...errors, email: 'Please enter a valid email address' });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setErrors({ email: '', password: '', general: '' });
+
+    if (!formData.email || !formData.password) {
+      setErrors({
+        email: !formData.email ? 'Email is required' : '',
+        password: !formData.password ? 'Password is required' : '',
+        general: '',
+      });
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setErrors({ ...errors, email: 'Please enter a valid email address' });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/users/login', formData);
+      const response = await axios.post('/api/users/login', formData, { timeout: 10000 });
       localStorage.setItem('token', response.data.token);
       document.querySelector('.auth-card').classList.add('success-animation');
       setTimeout(() => {
@@ -63,80 +96,103 @@ const Login = ({ setIsAuthenticated, switchToSignup }) => {
       }, 1000);
     } catch (err) {
       setLoading(false);
-      setError('Login failed. Please check your email and password.');
-      console.error('Login error:', err.response?.data || err.message);
+      setErrors({
+        ...errors,
+        general: err.code === 'ECONNABORTED' ? 'Request timed out. Please try again.' : 'Login failed. Please check your email and password.',
+      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Login error:', err.response?.data || err.message);
+      }
     }
   };
 
-  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+    if (!showPassword) {
+      setTimeout(() => setShowPassword(false), 5000);
+    }
+  };
 
   return (
-    <div className="auth-card">
-      <div className="card-decoration"></div>
-      <h1 className="welcome-title">Welcome Back</h1>
-      <p className="auth-subtitle">We're so happy to see you again</p>
-      <div className="quote-container">
-        <p className="inspirational-quote">{quote}</p>
-      </div>
-      {error && <div className="error-message">{error}</div>}
-      <form onSubmit={handleSubmit} className="auth-form">
-        <div className={`form-group ${focusedField === 'email' ? 'focused' : ''}`}>
-          <label htmlFor="email">
-            <AnimatedIcon path={icons.email} /> Email Address
-          </label>
-          <div className="input-wrapper">
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              onFocus={() => setFocusedField('email')}
-              onBlur={() => setFocusedField(null)}
-              required
-            />
-            <div className="input-focus-effect"></div>
-          </div>
+    <div className="auth-container">
+      <div className="vintage-background"></div>
+      <div className="floating-shapes"></div>
+      <div className="auth-card">
+        <div className="card-decoration"></div>
+        <h1 className="welcome-title">Welcome Back</h1>
+        <p className="auth-subtitle">We're so happy to see you again</p>
+        <div className="quote-container">
+          <p className="inspirational-quote">{quote}</p>
         </div>
-        <div className={`form-group ${focusedField === 'password' ? 'focused' : ''}`}>
-          <label htmlFor="password">
-            <AnimatedIcon path={icons.password} /> Password
-          </label>
-          <div className="input-wrapper password-input">
-            <input
-              type={showPassword ? "text" : "password"}
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              onFocus={() => setFocusedField('password')}
-              onBlur={() => setFocusedField(null)}
-              required
-            />
-            <button 
-              type="button" 
-              className="password-toggle"
-              onClick={togglePasswordVisibility}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-            <div className="input-focus-effect"></div>
+        {errors.general && (
+          <div className="error-message" role="alert" aria-live="assertive">
+            {errors.general}
           </div>
+        )}
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className={`form-group ${focusedField === 'email' ? 'focused' : ''}`}>
+            <label htmlFor="email">
+              <AnimatedIcon path={icons.email} /> Email Address
+            </label>
+            <div className="input-wrapper">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                aria-label="Enter your email address"
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+                required
+              />
+              <div className="input-focus-effect"></div>
+            </div>
+            {errors.email && <div className="error-message">{errors.email}</div>}
+          </div>
+          <div className={`form-group ${focusedField === 'password' ? 'focused' : ''}`}>
+            <label htmlFor="password">
+              <AnimatedIcon path={icons.password} /> Password
+            </label>
+            <div className="input-wrapper password-input">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                aria-label="Enter your password"
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={togglePasswordVisibility}
+                role="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+              <div className="input-focus-effect"></div>
+            </div>
+            {errors.password && <div className="error-message">{errors.password}</div>}
+          </div>
+          <button type="submit" className="auth-button" disabled={loading}>
+            <span className="button-text">{loading ? 'Signing In...' : 'Sign In'}</span>
+            <span className="button-shine"></span>
+          </button>
+        </form>
+        <div className="auth-alt-option">
+          <p>Don't have an account?</p>
+          <button className="text-button" onClick={switchToSignup}>Create Account</button>
         </div>
-        <button type="submit" className="auth-button" disabled={loading}>
-          <span className="button-text">{loading ? 'Signing In...' : 'Sign In'}</span>
-          <span className="button-shine"></span>
-        </button>
-      </form>
-      <div className="auth-alt-option">
-        <p>Don't have an account?</p>
-        <button className="text-button" onClick={switchToSignup}>Create Account</button>
-      </div>
-      <div className="helper-text">
-        <p>Need assistance? Your caregiver can help you sign in.</p>
+        <div className="helper-text">
+          <p>Need assistance? Your caregiver can help you sign in.</p>
+        </div>
       </div>
     </div>
   );
