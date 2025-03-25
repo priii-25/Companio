@@ -4,7 +4,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 class StoryGenerator {
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || "";
-    if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+    if (!apiKey || apiKey === "AIzaSyD2e4TPfRcCHAc_9fEHna_3duYuoN") {
       console.warn("Warning: No valid API key found in GEMINI_API_KEY. Using placeholder (may fail).");
     }
     console.log("Using API key:", apiKey);
