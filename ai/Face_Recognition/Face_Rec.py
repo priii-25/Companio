@@ -6,34 +6,17 @@ import sys
 import json
 from mtcnn import MTCNN
 import openpyxl
-import xlrd
 from ultralytics import YOLO
+import time
 
 # TensorFlow session setup
 config = tf.compat.v1.ConfigProto(log_device_placement=False)
 session = tf.compat.v1.Session(config=config)
 sess = session
 
-# Initialize MTCNN
-try:
-    detector = MTCNN()
-except Exception as e:
-    print(f"Error initializing MTCNN: {e}")
-    detector = None  # Proceed without face detection if MTCNN fails
-
-# Initialize YOLOv8n for person detection
-try:
-    yolo_model = YOLO("yolov8n.pt")
-except Exception as e:
-    print(f"Error initializing YOLOv8n: {e}")
-    yolo_model = None  # Proceed without YOLO if it fails
-
-print("Choose")
-print("1. For input from Webcam (Live)")
-print("2. For input from the Folder-Input")
-print("4. Capture and Process Image")
-val = input("Enter your value from Keyboard: ")
-print(val)
+# Initialize MTCNN and YOLO
+detector = MTCNN()
+yolo_model = YOLO("yolov8n.pt")
 
 # Constants
 minsize = 20
@@ -42,33 +25,18 @@ factor = 0.709
 margin = 44
 input_image_size = 160
 
-# Load Excel database
+# Load or create Excel database
 loc = os.path.join("data.xlsx")
 if not os.path.exists(loc):
-    loc = os.path.join("data.xls")
-    if not os.path.exists(loc):
-        print(f"Warning: Neither 'data.xlsx' nor 'data.xls' found. Proceeding without database.")
-        database_faces = []
-    else:
-        if loc.endswith('.xlsx'):
-            workbook = openpyxl.load_workbook(loc)
-            sheet = workbook.active
-            nrows = sheet.max_row
-        else:
-            workbook = xlrd.open_workbook(loc)
-            sheet = workbook.sheet_by_index(0)
-            nrows = sheet.nrows
+    print("No database file found. Creating new data.xlsx.")
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.append(["ID", "Name"])
+    workbook.save(loc)
 else:
-    if loc.endswith('.xlsx'):
-        workbook = openpyxl.load_workbook(loc)
-        sheet = workbook.active
-        nrows = sheet.max_row
-    else:
-        workbook = xlrd.open_workbook(loc)
-        sheet = workbook.sheet_by_index(0)
-        nrows = sheet.nrows
+    workbook = openpyxl.load_workbook(loc)
+    sheet = workbook.active
 
-# Custom load model function
 def custom_load_model(model):
     model_exp = os.path.expanduser(model)
     print('Model filename: %s' % model_exp)
@@ -77,22 +45,13 @@ def custom_load_model(model):
         graph_def.ParseFromString(f.read())
         tf.compat.v1.import_graph_def(graph_def, name='')
 
-# Load pre-trained FaceNet model
 model_path = os.path.join("20170512-110547.pb")
-if not os.path.exists(model_path):
-    print(f"Warning: Model file '{model_path}' not found. Proceeding without FaceNet model.")
-    images_placeholder = None
-    embeddings = None
-    phase_train_placeholder = None
-    embedding_size = None
-else:
-    custom_load_model(model_path)
-    images_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name("input:0")
-    embeddings = tf.compat.v1.get_default_graph().get_tensor_by_name("embeddings:0")
-    phase_train_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name("phase_train:0")
-    embedding_size = embeddings.get_shape()[1]
+custom_load_model(model_path)
+images_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name("input:0")
+embeddings = tf.compat.v1.get_default_graph().get_tensor_by_name("embeddings:0")
+phase_train_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name("phase_train:0")
+embedding_size = embeddings.get_shape()[1]
 
-# Define prewhiten function manually
 def prewhiten(x):
     mean = np.mean(x)
     std = np.std(x)
@@ -102,78 +61,60 @@ def prewhiten(x):
 
 def getFace(img):
     faces = []
-    if detector is None:
-        print("MTCNN not available. Skipping face detection.")
-        return faces
     try:
         result = detector.detect_faces(img)
+        if not result:
+            return faces
+        bounding_box = result[0]['box']
+        keypoints = result[0]['keypoints']
+        cropped = img[bounding_box[1]:bounding_box[1] + bounding_box[3], bounding_box[0]:bounding_box[0] + bounding_box[2]]
+        if cropped.size == 0:
+            return faces
+        rearranged = cv2.resize(cropped, (input_image_size, input_image_size), interpolation=cv2.INTER_CUBIC)
+        prewhitened = prewhiten(rearranged)
+        faces.append({'face': rearranged, 'embedding': getEmbedding(prewhitened), 'box': bounding_box})
     except Exception as e:
-        print(f"Error in face detection: {e}")
-        return faces
-    if not result:
-        return faces
-    bounding_box = result[0]['box']
-    keypoints = result[0]['keypoints']
-    cv2.rectangle(img,
-                  (bounding_box[0], bounding_box[1]),
-                  (bounding_box[0] + bounding_box[2], bounding_box[1] + bounding_box[3]),
-                  (0, 155, 255), 2)
-    cv2.circle(img, (keypoints['left_eye']), 2, (0, 155, 255), 2)
-    cv2.circle(img, (keypoints['right_eye']), 2, (0, 155, 255), 2)
-    cv2.circle(img, (keypoints['nose']), 2, (0, 155, 255), 2)
-    cv2.circle(img, (keypoints['mouth_left']), 2, (0, 155, 255), 2)
-    cv2.circle(img, (keypoints['mouth_right']), 2, (0, 155, 255), 2)
-    cropped = img[bounding_box[1]:bounding_box[1] + bounding_box[3], bounding_box[0]:bounding_box[0] + bounding_box[2]]
-    if cropped.size == 0:
-        return faces
-    rearranged = cv2.resize(cropped, (input_image_size, input_image_size), interpolation=cv2.INTER_CUBIC)
-    prewhitened = prewhiten(rearranged)
-    faces.append({'face': rearranged, 'embedding': getEmbedding(prewhitened), 'box': bounding_box})
+        print(f"Error in getFace: {e}")
+        sys.stdout.flush()
     return faces
 
 def getEmbedding(resized):
-    if images_placeholder is None or embeddings is None or phase_train_placeholder is None:
-        print("FaceNet model not available. Skipping embedding.")
+    try:
+        reshaped = resized.reshape(-1, input_image_size, input_image_size, 3)
+        feed_dict = {images_placeholder: reshaped, phase_train_placeholder: False}
+        with sess.as_default():
+            embedding = sess.run(embeddings, feed_dict=feed_dict)
+        return embedding
+    except Exception as e:
+        print(f"Error in getEmbedding: {e}")
+        sys.stdout.flush()
         return None
-    reshaped = resized.reshape(-1, input_image_size, input_image_size, 3)
-    feed_dict = {images_placeholder: reshaped, phase_train_placeholder: False}
-    with sess.as_default():
-        embedding = sess.run(embeddings, feed_dict=feed_dict)
-    return embedding
 
-# Load database images once
+# Load database images
 database_faces = []
-if 'nrows' in locals():
-    for j in range(1, nrows):
-        img_path = os.path.join("database", f"Person{j}.jpg")
-        img = cv2.imread(img_path)
-        if img is None:
-            print(f"Warning: Could not load '{img_path}'. Skipping.")
-            continue
-        faces = getFace(img)
-        if faces:
-            if loc.endswith('.xlsx'):
-                name = sheet.cell(j + 1, 2).value
-            else:
-                name = sheet.cell_value(j, 1)
-            database_faces.append({'embedding': faces[0]['embedding'], 'class': j, 'name': name})
+nrows = sheet.max_row
+for j in range(1, nrows):
+    img_path = os.path.join("database", f"Person{j}.jpg")
+    img = cv2.imread(img_path)
+    if img is None:
+        continue
+    faces = getFace(img)
+    if faces:
+        name = sheet.cell(j + 1, 2).value
+        database_faces.append({'embedding': faces[0]['embedding'], 'class': j, 'name': name})
 
 print("Total number of people in database = " + str(len(database_faces)))
 
-# Function to segment image using YOLO
 def segment_image(image):
     sub_images = []
     face_positions = []
-    if yolo_model is None:
-        print("YOLO model not available. Using whole image.")
-        return [image]
     try:
         results = yolo_model(image)
         for result in results:
             boxes = result.boxes.xyxy.cpu().numpy()
             classes = result.boxes.cls.cpu().numpy()
             for box, cls in zip(boxes, classes):
-                if int(cls) == 0:  # Class ID 0 is "person"
+                if int(cls) == 0:  # Person class
                     x1, y1, x2, y2 = map(int, box[:4])
                     face_height = int((y2 - y1) * 0.2)
                     face_y1 = y1
@@ -183,12 +124,11 @@ def segment_image(image):
                     face_center_x = (face_x1 + face_x2) // 2
                     face_positions.append((face_center_x, face_x1, face_x2, face_y1, face_y2))
     except Exception as e:
-        print(f"Error in YOLO person detection: {e}")
+        print(f"Error in segment_image: {e}")
+        sys.stdout.flush()
         return [image]
-
     if not face_positions:
         return [image]
-
     face_positions.sort(key=lambda x: x[0])
     num_faces = len(face_positions)
     img_height, img_width = image.shape[:2]
@@ -199,7 +139,6 @@ def segment_image(image):
         for i in range(num_faces - 1):
             split_x = (face_positions[i][0] + face_positions[i + 1][0]) // 2
             split_points.append(split_x)
-
         prev_x = 0
         for i in range(num_faces):
             if i < len(split_points):
@@ -210,53 +149,16 @@ def segment_image(image):
             if sub_img.size > 0:
                 sub_images.append(sub_img)
             prev_x = next_x
-
     return sub_images
 
-# Function to recognize faces in a sub-image
-def recognize_face(sub_image):
+def recognize_face(sub_image, sub_img_index):
     recognized_name = "Unknown"
     min_distance = float('inf')
     threshold = 0.9
-
-    live_faces = getFace(sub_image.copy())
-    if live_faces and live_faces[0]['embedding'] is not None:
-        live_embedding = live_faces[0]['embedding']
-        for db_face in database_faces:
-            if db_face['embedding'] is None:
-                continue
-            distance = np.sqrt(np.sum(np.square(np.subtract(live_embedding, db_face['embedding']))))
-            if distance < min_distance:
-                min_distance = distance
-                if distance <= threshold:
-                    recognized_name = db_face['name']
-    return recognized_name
-
-if val == '1':
-    camera = None
-    for i in range(5):
-        camera = cv2.VideoCapture(i)
-        if camera.isOpened():
-            print(f"Webcam opened successfully on index {i}.")
-            break
-    if not camera or not camera.isOpened():
-        print("Error: Could not open webcam. Ensure camera access is enabled.")
-        sys.exit(1)
-
-    while True:
-        ret, frame = camera.read()
-        if not ret:
-            print("Error: Could not read frame from webcam.")
-            break
-
-        live_faces = getFace(frame)
-        recognized_name = "Unknown"
-        min_distance = float('inf')
-        threshold = 0.9
-
+    try:
+        live_faces = getFace(sub_image.copy())
         if live_faces and live_faces[0]['embedding'] is not None:
             live_embedding = live_faces[0]['embedding']
-            live_box = live_faces[0]['box']
             for db_face in database_faces:
                 if db_face['embedding'] is None:
                     continue
@@ -265,169 +167,88 @@ if val == '1':
                     min_distance = distance
                     if distance <= threshold:
                         recognized_name = db_face['name']
-
-            label = f"{recognized_name} ({min_distance:.2f})"
-            cv2.putText(frame, label, (live_box[0], live_box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-
-        try:
-            cv2.imshow('Face Recognition', frame)
-        except Exception as e:
-            print(f"Error displaying frame: {e}")
-            break
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    camera.release()
-    cv2.destroyAllWindows()
-
-elif val == '2':
-    img_path = os.path.join("Input", "cam.jpg")
-    img2 = cv2.imread(img_path)
-    if img2 is None:
-        print(f"Error: Could not load '{img_path}'. Check if the file exists.")
-        sys.exit(1)
-
-    for j in range(len(database_faces)):
-        live_faces = getFace(img2.copy())
-        if not live_faces or live_faces[0]['embedding'] is None:
-            print("No face detected in the input image or embedding failed.")
-            break
-        live_embedding = live_faces[0]['embedding']
-        if database_faces[j]['embedding'] is None:
-            continue
-        distance = np.sqrt(np.sum(np.square(np.subtract(live_embedding, database_faces[j]['embedding']))))
-        threshold = 0.9
-        print("distance = " + str(distance))
-        if distance <= threshold:
-            print("person found is from class  " + str(j + 1))
-            print("The person found is  " + str(database_faces[j]['name']))
-            break
-    else:
-        print("No match found in the database.")
-
-elif val == '4':
-    camera = None
-    for i in range(5):
-        camera = cv2.VideoCapture(i)
-        if camera.isOpened():
-            print(f"Webcam opened successfully on index {i}.")
-            break
-    if not camera or not camera.isOpened():
-        print("Warning: Could not open webcam. Exiting with success status.")
-        # Output a success status with no faces to allow the process to complete
-        result = {
-            "status": "success",
-            "faces": []
-        }
-        print(json.dumps(result))
+            if recognized_name == "Unknown":
+                print(json.dumps({"status": "new_person_detected", "sub_image_index": sub_img_index}))
+                sys.stdout.flush()
+                # Wait for name from server (via stdin)
+                start_time = time.time()
+                timeout = 30  # Wait 30 seconds for name
+                new_name = None
+                while time.time() - start_time < timeout:
+                    try:
+                        new_name = input().strip()
+                        if new_name:
+                            break
+                    except EOFError:
+                        time.sleep(1)
+                if new_name:
+                    recognized_name = new_name
+                    new_person_id = len(database_faces) + 1
+                    new_img_path = os.path.join("database", f"Person{new_person_id}.jpg")
+                    cv2.imwrite(new_img_path, live_faces[0]['face'])
+                    database_faces.append({'embedding': live_embedding, 'class': new_person_id, 'name': new_name})
+                    wb = openpyxl.load_workbook(loc)
+                    ws = wb.active
+                    ws.append([new_person_id, new_name])
+                    wb.save(loc)
+        return recognized_name
+    except Exception as e:
+        print(f"Error in recognize_face: {e}")
         sys.stdout.flush()
-        sys.exit(0)
+        return "Unknown"
 
-    # Display webcam feed without face recognition
-    while True:
-        ret, frame = camera.read()
-        if not ret:
-            print("Warning: Could not read frame from webcam. Exiting with success status.")
-            camera.release()
-            cv2.destroyAllWindows()
-            result = {
-                "status": "success",
-                "faces": []
-            }
-            print(json.dumps(result))
-            sys.stdout.flush()
-            sys.exit(0)
-
-        cv2.putText(frame, "Press 'c' to capture", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+if __name__ == "__main__":
+    val = input("Enter your value from Keyboard: ")
+    print(val)
+    if val == '4':
         try:
-            cv2.imshow('Webcam Capture', frame)
-        except Exception as e:
-            print(f"Error displaying frame: {e}")
-            camera.release()
-            cv2.destroyAllWindows()
-            result = {
-                "status": "success",
-                "faces": []
-            }
-            print(json.dumps(result))
-            sys.stdout.flush()
-            sys.exit(0)
-
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('c'):
-            try:
-                cv2.imwrite("captured_frame.jpg", frame)
-                print(json.dumps({"status": "frame_captured", "path": "captured_frame.jpg"}))
-                sys.stdout.flush()
-            except Exception as e:
-                print(f"Error saving captured frame: {e}")
-                camera.release()
-                cv2.destroyAllWindows()
-                result = {
-                    "status": "success",
-                    "faces": []
-                }
-                print(json.dumps(result))
-                sys.stdout.flush()
+            camera = cv2.VideoCapture(0)
+            if not camera.isOpened():
+                print("Warning: Could not open webcam.")
                 sys.exit(0)
-            break
-        elif key == ord('q'):
+            while True:
+                ret, frame = camera.read()
+                if not ret:
+                    print("Warning: Could not read frame.")
+                    sys.exit(0)
+                cv2.putText(frame, "Press 'c' to capture", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.imshow('Webcam Capture', frame)
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('c'):
+                    cv2.imwrite("captured_frame.jpg", frame)
+                    print(json.dumps({"status": "frame_captured", "path": "captured_frame.jpg"}))
+                    sys.stdout.flush()
+                    break
+                elif key == ord('q'):
+                    sys.exit(0)
             camera.release()
             cv2.destroyAllWindows()
+
+            renamed_file_path = input().strip()
+            captured_image = cv2.imread(renamed_file_path)
+            if captured_image is None:
+                print("Warning: Could not load captured image.")
+                sys.exit(0)
+
+            sub_images = segment_image(captured_image)
+            print(f"Segmented into {len(sub_images)} sub-images")
+
+            face_results = []
+            for i, sub_img in enumerate(sub_images):
+                recognized_name = recognize_face(sub_img, i)
+                face_results.append({
+                    "recognized": recognized_name != "Unknown",
+                    "name": recognized_name if recognized_name != "Unknown" else None
+                })
+
             result = {
                 "status": "success",
-                "faces": []
+                "faces": face_results
             }
             print(json.dumps(result))
             sys.stdout.flush()
             sys.exit(0)
-
-    camera.release()
-    cv2.destroyAllWindows()
-
-    # Wait for the renamed file path from the server
-    print("Waiting for renamed file path from server...")
-    sys.stdout.flush()
-    renamed_file_path = input().strip()
-    print(f"Received renamed file path: {renamed_file_path}")
-
-    # Process the captured image using the renamed file path
-    captured_image = cv2.imread(renamed_file_path)
-    if captured_image is None:
-        print(f"Warning: Could not load captured image from {renamed_file_path}. Exiting with success status.")
-        result = {
-            "status": "success",
-            "faces": []
-        }
-        print(json.dumps(result))
-        sys.stdout.flush()
-        sys.exit(0)
-
-    # Segment the image using YOLO
-    sub_images = segment_image(captured_image)
-    print(f"Segmented into {len(sub_images)} sub-images")
-
-    # Recognize faces in each sub-image
-    face_results = []
-    for i, sub_img in enumerate(sub_images):
-        recognized_name = recognize_face(sub_img)
-        face_results.append({
-            "recognized": recognized_name != "Unknown",
-            "name": recognized_name if recognized_name != "Unknown" else None
-        })
-
-    # Output the results as JSON
-    result = {
-        "status": "success",
-        "faces": face_results
-    }
-    print(json.dumps(result))
-    sys.stdout.flush()
-
-    # Exit with success status
-    sys.exit(0)
-
-else:
-    print("Wrong Choice")
-    sys.exit(1)
+        except Exception as e:
+            print(f"Error in main execution: {e}")
+            sys.stdout.flush()
+            sys.exit(1)
