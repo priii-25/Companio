@@ -1,3 +1,5 @@
+require('dotenv').config(); // Load environment variables first
+
 const express = require('express');
 const axios = require('axios');
 const mongoose = require('mongoose');
@@ -9,16 +11,21 @@ const path = require('path');
 const WebSocket = require('ws');
 const fs = require('fs');
 
-require('dotenv').config();
+// Generate test token after dotenv is loaded
+const testToken = jwt.sign(
+  { userId: "67e2848c1dc2e45490665a46" },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }
+);
+console.log('Test token for user 67e2848c1dc2e45490665a46:', testToken);
 
 const app = express();
-
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -48,10 +55,9 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
@@ -73,7 +79,7 @@ const Routine = mongoose.model('Routine', routineSchema);
 
 // Journal Schema
 const journalSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Added index for better query performance
   image: { type: String, required: true },
   text: { type: String, required: true },
   mood: { type: String },
@@ -96,61 +102,55 @@ const storySchema = new mongoose.Schema({
 
 const Story = mongoose.model('Story', storySchema);
 
-// Middleware to verify JWT
+// Middleware to verify JWT with additional logging
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) {
-    console.log('No token provided for route:', req.path);
-    return res.status(401).json({ message: 'No token provided' });
-  }
+  console.log('Received token in authMiddleware:', token); // Log the token for debugging
+  if (!token) return res.status(401).json({ message: 'No token provided' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Decoded token payload:', decoded); // Log the decoded payload
     req.userId = decoded.userId;
-    console.log('Token validated for user:', req.userId);
     next();
   } catch (error) {
-    console.error('Invalid token for route:', req.path, error);
+    console.error('Token verification error:', error);
     return res.status(401).json({ message: 'Invalid token' });
   }
 };
 
-// WebSocket Server
 const server = app.listen(process.env.PORT || 5000, () => {
   console.log(`Server running on port ${server.address().port}`);
 });
 
 const wss = new WebSocket.Server({ server });
+let activePythonProcess = null;
 
 wss.on('connection', (ws) => {
   console.log('WebSocket client connected');
-  ws.on('close', () => {
-    console.log('WebSocket client disconnected');
+
+  ws.on('message', (message) => {
+    const data = JSON.parse(message);
+    if (data.type === 'newPersonName' && activePythonProcess) {
+      console.log(`Received name from frontend: ${data.name}`);
+      activePythonProcess.stdin.write(`${data.name}\n`);
+    }
   });
+
+  ws.on('close', () => console.log('WebSocket client disconnected'));
 });
 
-// Public Routes
+// User Routes
 app.post('/api/users/register', async (req, res) => {
   try {
     const { name, email, password, profile } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'User already exists' });
-
-    const user = new User({
-      name,
-      email,
-      password,
-      profile: profile || {},
-    });
+    const user = new User({ name, email, password, profile: profile || {} });
     await user.save();
-
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({
-      message: 'User registered successfully!',
-      token,
-      user: { id: user._id, name: user.name, email: user.email },
-    });
+    const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { id: user._id, name, email } });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Error in /api/users/register:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -159,32 +159,27 @@ app.post('/api/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
-
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email },
-    });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+    const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user._id, name: user.name, email } });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Error in /api/users/login:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Protected Routes
+// Journal Routes
 app.post('/api/journal', authMiddleware, async (req, res) => {
   try {
     const { image, text, mood, filter, isFavorited, weatherEffect } = req.body;
     if (!image || !text) return res.status(400).json({ message: 'Image and text are required' });
     const journalEntry = new Journal({ userId: req.userId, image, text, mood, filter, isFavorited, weatherEffect });
     await journalEntry.save();
-    res.status(201).json({ message: 'Journal entry saved successfully', journalEntry });
+    res.status(201).json({ message: 'Journal entry saved', journalEntry });
   } catch (error) {
-    console.error('Error saving journal:', error);
+    console.error('Error in /api/journal:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -194,15 +189,26 @@ app.get('/api/journal', authMiddleware, async (req, res) => {
     const journalEntries = await Journal.find({ userId: req.userId }).sort({ createdAt: -1 });
     res.json(journalEntries);
   } catch (error) {
-    console.error('Error fetching journal entries:', error);
+    console.error('Error in /api/journal:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 app.get('/api/journal/texts', authMiddleware, async (req, res) => {
+  console.log('Request received at /api/journal/texts');
   try {
-    const journalTexts = await Journal.find({ userId: req.userId }, 'text').sort({ createdAt: -1 }).lean();
+    console.log('User ID from token in /api/journal/texts:', req.userId);
+    const allEntries = await Journal.find({}).limit(5);
+    console.log('All journal entries in DB:', allEntries);
+
+    const journalTexts = await Journal.find(
+      { userId: new mongoose.Types.ObjectId(req.userId) },
+      'text'
+    ).sort({ createdAt: -1 }).lean();
+    console.log('Raw journal entries for user:', journalTexts);
     const texts = journalTexts.map(entry => entry.text);
+    console.log('Fetched texts for user:', texts);
+
     res.json({ texts });
   } catch (error) {
     console.error('Error fetching journal texts:', error);
@@ -210,6 +216,7 @@ app.get('/api/journal/texts', authMiddleware, async (req, res) => {
   }
 });
 
+// Profile Routes
 app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
@@ -259,6 +266,7 @@ app.get('/api/profile/insights', authMiddleware, async (req, res) => {
   }
 });
 
+// Routine Routes
 app.get('/api/routines/:date', authMiddleware, async (req, res) => {
   try {
     const { date } = req.params;
@@ -303,6 +311,7 @@ app.get('/api/routines', authMiddleware, async (req, res) => {
   }
 });
 
+// Story Routes
 app.get('/api/stories', authMiddleware, async (req, res) => {
   try {
     const stories = await Story.find({ userId: req.userId }).sort({ createdAt: -1 });
@@ -333,7 +342,8 @@ const StoryGenerator = require('./storyteller').StoryGenerator;
 app.get('/api/story/:mood', authMiddleware, async (req, res) => {
   try {
     const { mood } = req.params;
-    const generator = new StoryGenerator();
+    const token = req.header('Authorization')?.replace('Bearer ', ''); 
+    const generator = new StoryGenerator(token); 
     const story = await generator.generate(mood);
     res.json({ story });
   } catch (error) {
@@ -342,151 +352,96 @@ app.get('/api/story/:mood', authMiddleware, async (req, res) => {
   }
 });
 
-// Face Recognition Routes (Protected)
+// Face Recognition Routes
 app.post('/api/face-recognition/capture', authMiddleware, (req, res) => {
   const pythonPath = path.join(__dirname, '..', 'ai', 'Face_Recognition', 'Face_Rec.py');
   const pythonCwd = path.join(__dirname, '..', 'ai', 'Face_Recognition');
   const userFramePath = path.join(pythonCwd, `captured_frame_${req.userId}.jpg`);
   const originalFramePath = path.join(pythonCwd, 'captured_frame.jpg');
 
-  // Determine the Python executable
-  let pythonCommand;
-  if (process.platform === 'win32') {
-    const { execSync } = require('child_process');
-    try {
-      pythonCommand = execSync('where.exe python').toString().split('\r\n')[0].trim();
-      console.log(`Found Python at: ${pythonCommand}`);
-    } catch (error) {
-      try {
-        pythonCommand = execSync('where.exe python3').toString().split('\r\n')[0].trim();
-        console.log(`Found Python3 at: ${pythonCommand}`);
-      } catch (err) {
-        console.error('Python not found on system PATH. Please ensure Python is installed and added to PATH.');
-        res.status(500).json({ error: 'Python not found on system PATH.' });
-        return;
-      }
-    }
-  } else {
-    pythonCommand = process.env.PYTHON_EXECUTABLE || 'python3';
-  }
+  const pythonCommand = process.platform === 'win32' ? '"C:\\Program Files\\Python312\\python.exe"' : 'python3';
+  activePythonProcess = spawn(pythonCommand, [pythonPath], {
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    cwd: pythonCwd,
+    shell: true,
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
 
-  console.log(`Using Python executable: ${pythonCommand}`);
-  console.log(`Python script path: ${pythonPath}`);
-  console.log(`Python working directory: ${pythonCwd}`);
-  console.log(`User frame path: ${userFramePath}`);
+  activePythonProcess.stdin.write('4\n');
 
-  let pythonProcess;
   let responseSent = false;
-  let frameCaptured = false;
+  let resultData = null;
 
-  try {
-    // Quote the pythonCommand to handle spaces in the path
-    const quotedPythonCommand = `"${pythonCommand}"`;
-    pythonProcess = spawn(quotedPythonCommand, [pythonPath], {
-      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-      cwd: pythonCwd,
-      shell: true // Use shell to handle quoted command
-    });
-  } catch (error) {
-    console.error('Error spawning Python process:', error);
-    if (!responseSent) {
-      responseSent = true;
-      res.status(500).json({ error: 'Failed to start webcam capture: Check Python executable.' });
-    }
-    return;
-  }
-
-  pythonProcess.stdin.write('4\n');
-
-  let output = '';
-  let errorOutput = '';
-  pythonProcess.stdout.on('data', (data) => {
+  activePythonProcess.stdout.on('data', (data) => {
     const dataStr = data.toString();
-    output += dataStr;
+    console.log('Python stdout:', dataStr);
     const lines = dataStr.split('\n').filter(line => line.trim());
     for (const line of lines) {
       try {
         const result = JSON.parse(line);
         if (result.status === 'frame_captured') {
-          console.log('Frame captured:', result.path);
-          try {
-            if (fs.existsSync(originalFramePath)) {
-              fs.renameSync(originalFramePath, userFramePath);
-              console.log(`Successfully renamed ${originalFramePath} to ${userFramePath}`);
-              frameCaptured = true;
-              wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                  client.send(JSON.stringify({ type: 'frameCaptured', path: userFramePath }));
-                }
-              });
-              pythonProcess.stdin.write(`${userFramePath}\n`);
-            } else {
-              console.error(`Original frame not found at ${originalFramePath}`);
-            }
-          } catch (renameError) {
-            console.error('Error renaming captured frame:', renameError);
-          }
-        } else if (result.status === 'success') {
-          console.log('Face recognition result:', result);
+          fs.renameSync(originalFramePath, userFramePath);
           wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ type: 'faceRecognition', result }));
+              client.send(JSON.stringify({ type: 'frameCaptured', path: userFramePath }));
             }
           });
+          activePythonProcess.stdin.write(`${userFramePath}\n`);
+        } else if (result.status === 'new_person_detected') {
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'newPersonPrompt', subImageIndex: result.sub_image_index }));
+            }
+          });
+        } else if (result.status === 'success') {
+          resultData = result;
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'faceRecognition', result: result }));
+            }
+          });
+        } else if (result.status === 'error') {
+          if (!responseSent) {
+            responseSent = true;
+            res.status(500).json({ error: result.message });
+          }
         }
       } catch (e) {
-        console.log('Python script output:', line);
+        console.log('Non-JSON Python output:', line);
       }
     }
   });
 
-  pythonProcess.stderr.on('data', (data) => {
-    const errorStr = data.toString();
-    errorOutput += errorStr;
-    console.error(`Python error: ${errorStr}`);
-    if (errorStr.includes('ModuleNotFoundError') && !responseSent) {
-      pythonProcess.kill();
-      responseSent = true;
-      res.status(500).json({ error: 'Face recognition failed: Missing Python dependencies.' });
-    }
+  activePythonProcess.stderr.on('data', (data) => {
+    console.error('Python stderr:', data.toString());
   });
 
-  pythonProcess.on('error', (error) => {
-    console.error('Python process error:', error);
+  activePythonProcess.on('close', (code) => {
+    console.log(`Python process exited with code ${code}`);
     if (!responseSent) {
       responseSent = true;
-      res.status(500).json({ error: 'Webcam capture process failed to start.' });
-    }
-  });
-
-  pythonProcess.on('close', (code) => {
-    if (!responseSent) {
-      responseSent = true;
-      if (code === 0) {
-        res.status(200).json({ message: 'Webcam capture and processing completed', output });
+      if (code === 0 && resultData) {
+        res.status(200).json({ message: 'Face recognition completed', result: resultData });
       } else {
-        res.status(500).json({ error: 'Webcam capture failed', code, errorOutput });
+        res.status(500).json({ error: `Python process failed with code ${code}` });
       }
     }
+    activePythonProcess = null;
   });
 
-  // Server-side timeout (adjustable if needed)
   setTimeout(() => {
     if (!responseSent) {
-      pythonProcess.kill();
+      if (activePythonProcess) activePythonProcess.kill();
       responseSent = true;
-      res.status(504).json({ error: 'Webcam capture timed out on server' });
+      res.status(504).json({ error: 'Face recognition timed out' });
     }
-  }, 90000);
+  }, 120000);
 });
 
 app.get('/api/captured-frame', authMiddleware, (req, res) => {
   const framePath = path.join(__dirname, '..', 'ai', 'Face_Recognition', `captured_frame_${req.userId}.jpg`);
-  if (fs.existsSync(framePath)) {
-    res.sendFile(framePath);
-  } else {
-    res.status(404).json({ error: 'Frame not found' });
-  }
+  if (fs.existsSync(framePath)) res.sendFile(framePath);
+  else res.status(404).json({ error: 'Frame not found' });
 });
 
 app.get('/api/weather', authMiddleware, async (req, res) => {
@@ -512,7 +467,6 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
   }
 });
 
-// Cleanup on server shutdown
 process.on('SIGINT', async () => {
   console.log('Shutting down server...');
   try {

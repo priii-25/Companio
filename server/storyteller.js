@@ -2,19 +2,27 @@ require("dotenv").config();
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class StoryGenerator {
-  constructor() {
+  constructor(token) {
     const apiKey = process.env.GEMINI_API_KEY || "";
     if (!apiKey || apiKey === "AIzaSyD2e4TPfRcCHAc_9fEHna_3duYuoN") {
       console.warn("Warning: No valid API key found in GEMINI_API_KEY. Using placeholder (may fail).");
     }
     console.log("Using API key:", apiKey);
     this.genAI = new GoogleGenerativeAI(apiKey);
+    this.token = token; // Store the token for authenticated requests
   }
 
   async fetchJournalEntries() {
     try {
-      const response = await fetch("http://localhost:5000/api/journal/texts");
-      if (!response.ok) throw new Error("Failed to fetch journal entries");
+      const response = await fetch("http://localhost:5000/api/journal/texts", {
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch journal entries: ${response.status} ${response.statusText}`);
+      }
       const entries = await response.json();
       return entries;
     } catch (error) {
@@ -57,7 +65,6 @@ class StoryGenerator {
       const eventText = entry.slice(settingIndex + setting.length).trim();
       return eventText || "an event unfolded";
     }
-    // If no setting is found, use the full entry minus any detected keywords
     const keywords = ["my", "favourite", "new", "added"];
     let event = entry;
     keywords.forEach(keyword => {
