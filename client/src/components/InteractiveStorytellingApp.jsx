@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/InteractiveStorytellingStyles.css';
+import Navbar from './Navbar';
 
 const icons = {
   quill: "M3 17v4h4l11-11-4-4-11 11zm18-14l-3-3-1.41 1.41 3 3L21 3z",

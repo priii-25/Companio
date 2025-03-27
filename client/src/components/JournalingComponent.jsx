@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/JournalingStyles.css';
+import Navbar from './Navbar';
 
 // Enhanced animated icons with more nostalgic/cute feel
 const icons = {
