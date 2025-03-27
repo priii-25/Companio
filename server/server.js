@@ -11,7 +11,6 @@ const path = require('path');
 const WebSocket = require('ws');
 const fs = require('fs');
 
-// Generate test token after dotenv is loaded
 const testToken = jwt.sign(
   { userId: "67e2848c1dc2e45490665a46" },
   process.env.JWT_SECRET,

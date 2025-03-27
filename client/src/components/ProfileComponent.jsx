@@ -104,23 +104,6 @@ const ProfileComponent = () => {
         )}
       </section>
 
-      {/* Memory & Social Connections */}
-      <section className="profile-section vintage-paper">
-        <h2>Family & Friends</h2>
-        {profile.recognizedFaces?.length ? (
-          <div className="faces-grid">
-            {profile.recognizedFaces.map((face, index) => (
-              <div key={index} className="face-card">
-                <img src={face.photo} alt={face.name} className="face-photo" />
-                <p>{face.name} ({face.relationship})</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p>No recognized faces yet.</p>
-        )}
-      </section>
-
       {/* Accessibility Settings */}
       <section className="profile-section vintage-paper">
         <h2>Accessibility</h2>
