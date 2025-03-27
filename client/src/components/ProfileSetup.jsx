@@ -186,14 +186,6 @@ const ProfileSetup = ({ onSubmit }) => {
                 <option value="High Contrast">High Contrast</option>
               </select>
             </div>
-            <div className="form-group">
-              <label>Voice Activation:</label>
-              <input
-                type="checkbox"
-                checked={profileData.accessibility.voiceActivation}
-                onChange={handleCheckboxChange}
-              />
-            </div>
             <button className="back-button" onClick={handleBack}>Back</button>
             <button className="next-button" onClick={handleSubmit}>Finish</button>
           </div>
