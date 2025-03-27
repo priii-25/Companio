@@ -12,7 +12,8 @@ const ProfileSetup = ({ onSubmit }) => {
     medications: [{ name: '', dosage: '', schedule: '' }],
     allergies: [''],
     caregiverContacts: [{ name: '', phone: '', email: '' }],
-    accessibility: { fontSize: 'Large', colorScheme: 'Soothing Pastels', voiceActivation: true }
+    accessibility: { fontSize: 'Large', colorScheme: 'Soothing Pastels', voiceActivation: true },
+    medicalReports: [] // New field for storing PDF files
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -47,13 +48,30 @@ const ProfileSetup = ({ onSubmit }) => {
     });
   };
 
+  // Handle multiple PDF uploads
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setProfileData({ ...profileData, medicalReports: files });
+  };
+
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
-
+  
   const handleSubmit = () => {
+    const formData = new FormData();
+    Object.entries(profileData).forEach(([key, value]) => {
+      if (key === 'medicalReports') {
+        value.forEach((file, index) => {
+          formData.append(`medicalReports[${index}]`, file);
+        });
+      } else {
+        formData.append(key, JSON.stringify(value));
+      }
+    });
+    console.log('Submitting profile data:', profileData);
     setSuccess('✨ Profile set up successfully! Welcome to your journey...');
-    onSubmit(profileData);
-    setTimeout(() => navigate('/journal'), 1000); // Redirect to journal after setup
+    onSubmit(formData);
+    setTimeout(() => navigate('/journal'), 1000);
   };
 
   const renderStep = () => {
@@ -155,6 +173,22 @@ const ProfileSetup = ({ onSubmit }) => {
                 onChange={(e) => handleChange(e, 'objectArray', 0)}
                 placeholder="Phone"
               />
+            </div>
+            <div className="form-group">
+              <label>Medical Reports (PDFs):</label>
+              <input
+                type="file"
+                accept=".pdf"
+                multiple
+                onChange={handleFileChange}
+              />
+              {profileData.medicalReports.length > 0 && (
+                <ul>
+                  {profileData.medicalReports.map((file, index) => (
+                    <li key={index}>{file.name}</li>
+                  ))}
+                </ul>
+              )}
             </div>
             <button className="back-button" onClick={handleBack}>Back</button>
             <button className="next-button" onClick={handleNext}>Next</button>
