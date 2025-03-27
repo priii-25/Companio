@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import '../styles/RoutineManagementStyles.css';
 import SoundTherapyComponent from './SoundTherapyComponent';
 import axios from 'axios';
+import Navbar from './Navbar';
 
 // Weather emoticons (adjust paths to match your public folder structure)
 const weatherEmojis = {
@@ -251,6 +252,8 @@ const RoutineManagementApp = () => {
   };
 
   return (
+    <>
+    <Navbar />
     <div className="routine-container">
       <div className="vintage-overlay"></div>
 
@@ -439,6 +442,7 @@ const RoutineManagementApp = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

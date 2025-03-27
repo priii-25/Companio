@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/ChatbotStyles.css';
-
+import Navbar from './Navbar';
 const EmpatheticChatbot = () => {
   const [messages, setMessages] = useState([
     { sender: 'companion', text: "Oh, hello, my lovely wanderer! I’ve been waiting by the window for you. What’s stirring in your heart today?" }
