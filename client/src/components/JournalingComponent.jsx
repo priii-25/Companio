@@ -4,14 +4,15 @@ import '../styles/JournalingStyles.css';
 
 // Enhanced animated icons with more nostalgic/cute feel
 const icons = {
-  camera: "M12 15.2C13.8 15.2 15.2 13.8 15.2 12C15.2 10.2 13.8 8.8 12 8.8C10.2 8.8 8.8 10.2 8.8 12C8.8 13.8 10.2 15.2 12 15.2ZM9 2L7.17 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H16.83L15 2H9ZM12 17C9.24 17 7 14.76 7 12C7 9.24 9.24 7 12 7C14.76 7 17 9.24 17 12C17 14.76 14.76 17 12 17Z",
-  gallery: "M22 16V4C22 2.9 21.1 2 20 2H8C6.9 2 6 2.9 6 4V16C6 17.1 6.9 18 8 18H20C21.1 18 22 17.1 22 16ZM11 12L13.03 14.71L16 11L20 16H8L11 12ZM2 6V20C2 21.1 2.9 22 4 22H18V20H4V6H2Z",
+  camera: "M12 15.2C13.8 15.2 15.2 13.8 15.2 12C15.2 10.2 13.8 8.8 12 8.8C10.2 8.8 8.8 10.2 8.8 12C8.8 13.8 10.2 15.2 12 15.2ZM9 2L7.17 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H16.83L15 2H9Z",
+  gallery: "M22 16V4C22 2.9 21.1 2 20 2H8C6.9 2 6 2.9 6 4V16C6 17.1 6.9 18 8 18H20C21.1 18 22 17.1 22 16V6C22 4.9 21.1 4 20 4H16.83L15 2H9ZM12 17C9.24 17 7 14.76 7 12C7 9.24 9.24 7 12 7C14.76 7 17 9.24 17 12C17 14.76 14.76 17 12 17Z",
   microphone: "M12 14C13.66 14 15 12.66 15 11V5C15 3.34 13.66 2 12 2C10.34 2 9 3.34 9 5V11C9 12.66 10.34 14 12 14ZM11 5C11 4.45 11.45 4 12 4C12.55 4 13 4.45 13 5V11C13 11.55 12.55 12 12 12C11.45 12 11 11.55 11 11V5ZM17 11C17 13.76 14.76 16 12 16C9.24 16 7 13.76 7 11H5C5 14.53 7.61 17.43 11 17.9V21H13V17.9C16.39 17.43 19 14.53 19 11H17Z",
   save: "M17 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3ZM19 19H5V5H16.17L19 7.83V19ZM12 12C10.34 12 9 13.34 9 15C9 16.66 10.34 18 12 18C13.66 18 15 16.66 15 15C15 13.34 13.66 12 12 12ZM6 6H15V10H6V6Z",
   heart: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
   polaroid: "M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 14H4V7h4.05l1.83-2h4.24l1.83 2H20v12zM12 8c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z",
   star: "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z",
-  people: "M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
+  people: "M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z",
+  recall: "M21 8H3V6h18v2zm-2 4H5v-2h14v2zm-4 4H9v-2h6v2zm6 4H3v-2h18v2zM10 18h4v2h-4v-2zm0-12h4V4h-4v2z",
 };
 
 // More nostalgic and comforting prompts
@@ -41,7 +42,7 @@ const AnimatedIcon = ({ path, className = "" }) => (
 const JournalingComponent = () => {
   const [image, setImage] = useState(null);
   const [journalText, setJournalText] = useState('');
-  const [withPeople, setWithPeople] = useState([]); // New state for people in the memory
+  const [withPeople, setWithPeople] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [memories, setMemories] = useState([]);
   const [prompt, setPrompt] = useState('');
@@ -56,6 +57,13 @@ const JournalingComponent = () => {
   const [capturing, setCapturing] = useState(false);
   const fileInputRef = useRef(null);
   const journalCardRef = useRef(null);
+
+  // New state for recall feature
+  const [showRecallOptions, setShowRecallOptions] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [personMemories, setPersonMemories] = useState([]);
+  const [peopleList, setPeopleList] = useState([]);
+  const [recalling, setRecalling] = useState(false);
 
   // Mood options
   const moodOptions = [
@@ -73,7 +81,7 @@ const JournalingComponent = () => {
     { label: "Autumn Leaves", value: "leaves" }
   ];
 
-  // Fetch memories only if authenticated
+  // Fetch memories
   const fetchMemories = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -85,6 +93,9 @@ const JournalingComponent = () => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const response = await axios.get('http://localhost:5000/api/journal', config);
       setMemories(response.data);
+      // Extract unique people from memories for the dropdown
+      const uniquePeople = [...new Set(response.data.flatMap(memory => memory.withPeople || []))];
+      setPeopleList(uniquePeople);
       setError('');
     } catch (error) {
       console.error('Error fetching memories:', error.response?.data || error.message);
@@ -181,16 +192,23 @@ const JournalingComponent = () => {
             }, 2000);
           } else if (data.type === 'faceRecognition') {
             console.log('Face recognition result:', data.result);
-            if (data.result.faces) {
-              const recognizedNames = data.result.faces
-                .filter(face => face.recognized && face.name)
-                .map(face => face.name);
-              setWithPeople(prev => [...new Set([...prev, ...recognizedNames])]); // Avoid duplicates
+            if (data.result.faces && data.result.faces.length > 0) {
+              const recognizedName = data.result.faces.find(face => face.recognized)?.name;
+              if (recognizedName) {
+                fetchMemoriesByPerson(recognizedName);
+              } else {
+                setError('No recognized person found in the capture.');
+                setRecalling(false);
+              }
+            } else {
+              setError('No faces detected in the capture.');
+              setRecalling(false);
             }
           }
         } catch (e) {
           console.error('Error parsing WebSocket message:', e);
           setError('Error receiving face recognition result.');
+          setRecalling(false);
         }
       };
       websocket.onclose = () => {
@@ -398,7 +416,7 @@ const JournalingComponent = () => {
         { 
           image, 
           text: journalText,
-          withPeople, // Include the new field
+          withPeople,
           mood,
           filter,
           isFavorited,
@@ -417,7 +435,7 @@ const JournalingComponent = () => {
       setTimeout(() => {
         setImage(null);
         setJournalText('');
-        setWithPeople([]); // Reset withPeople
+        setWithPeople([]);
         setSuccess('');
         setFilter('none');
         setIsFavorited(false);
@@ -435,6 +453,62 @@ const JournalingComponent = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // New function to fetch memories by person
+  const fetchMemoriesByPerson = async (personName) => {
+    setRecalling(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please log in to recall memories.');
+        setRecalling(false);
+        return;
+      }
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.get('http://localhost:5000/api/journal', config);
+      const filteredMemories = response.data.filter(memory => 
+        memory.withPeople && memory.withPeople.includes(personName)
+      );
+      setPersonMemories(filteredMemories);
+      setSelectedPerson(personName);
+      setShowRecallOptions(false);
+
+      const recallSound = new Audio('/sounds/memory-recall.mp3');
+      recallSound.volume = 0.4;
+      recallSound.play().catch(e => console.log('Audio play prevented:', e));
+    } catch (error) {
+      console.error('Error fetching person memories:', error);
+      setError('Failed to recall memories. Please try again.');
+    } finally {
+      setRecalling(false);
+    }
+  };
+
+  // Handle person selection from list
+  const handleSelectPerson = (person) => {
+    fetchMemoriesByPerson(person);
+  };
+
+  // Handle webcam recall
+  const handleRecallFromWebcam = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Please log in to use webcam recall.');
+      return;
+    }
+
+    setRecalling(true);
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await axios.post('http://localhost:5000/api/face-recognition/capture', {}, config);
+      // Response will be handled via WebSocket
+    } catch (error) {
+      console.error('Error capturing for recall:', error);
+      setError('Failed to capture from webcam: ' + (error.response?.data?.error || error.message));
+      setRecalling(false);
     }
   };
 
@@ -621,6 +695,47 @@ const JournalingComponent = () => {
             />
           </div>
 
+          {/* New Recall Memories Button */}
+          <div className="recall-actions">
+            <button 
+              className="action-button recall-button" 
+              onClick={() => setShowRecallOptions(!showRecallOptions)}
+            >
+              <AnimatedIcon path={icons.recall} />
+              <span>Recall Memories With...</span>
+            </button>
+
+            {showRecallOptions && (
+              <div className="recall-options">
+                <div className="people-list">
+                  <h3>Choose a person:</h3>
+                  {peopleList.length > 0 ? (
+                    peopleList.map(person => (
+                      <button
+                        key={person}
+                        className="person-button"
+                        onClick={() => handleSelectPerson(person)}
+                        disabled={recalling}
+                      >
+                        {person}
+                      </button>
+                    ))
+                  ) : (
+                    <p>No people recorded yet.</p>
+                  )}
+                </div>
+                <button
+                  className="action-button webcam-recall-button"
+                  onClick={handleRecallFromWebcam}
+                  disabled={recalling}
+                >
+                  <AnimatedIcon path={icons.camera} />
+                  <span>{recalling ? 'Recalling...' : 'Scan with Webcam'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className={`form-group ${focusedField === 'withPeople' ? 'focused' : ''}`}>
             <label htmlFor="with-people">
               <AnimatedIcon path={icons.people} className="form-icon" />
@@ -724,15 +839,56 @@ const JournalingComponent = () => {
         </div>
       </div>
 
-      {/* Recent Memories Section */}
+      {/* Memories Section */}
       <div className="memories-section">
         <div className="memories-header">
           <AnimatedIcon path={icons.heart} className="memories-icon" />
-          <h2 className="memories-title">Treasured Moments</h2>
+          <h2 className="memories-title">
+            {selectedPerson ? `Moments with ${selectedPerson}` : 'Treasured Moments'}
+          </h2>
           <AnimatedIcon path={icons.heart} className="memories-icon" />
         </div>
 
-        {memories.length === 0 ? (
+        {selectedPerson && personMemories.length === 0 ? (
+          <div className="no-memories">
+            <AnimatedIcon path={icons.polaroid} className="empty-icon" />
+            <p>No memories found with {selectedPerson} yet...</p>
+          </div>
+        ) : selectedPerson ? (
+          <div className="memories-grid polaroid-stack">
+            {personMemories.map((memory) => (
+              <div key={memory._id} className="memory-card polaroid-card">
+                <div className="memory-image-container">
+                  <img 
+                    src={memory.image} 
+                    alt="Memory" 
+                    className={`memory-thumbnail ${memory.filter || ''}`} 
+                  />
+                  {memory.isFavorited && (
+                    <div className="memory-favorite">
+                      <AnimatedIcon path={icons.heart} />
+                    </div>
+                  )}
+                </div>
+                <div className="memory-content">
+                  <p className="memory-text">{memory.text}</p>
+                  {memory.mood && (
+                    <div className="memory-mood">
+                      {memory.mood}
+                    </div>
+                  )}
+                  <p className="memory-date">
+                    {new Date(memory.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : memories.length === 0 ? (
           <div className="no-memories">
             <AnimatedIcon path={icons.polaroid} className="empty-icon" />
             <p>Your memory collection is waiting for its first treasure...</p>
