@@ -612,7 +612,6 @@
     position: relative;
   }
   
-  /* Add wooden shelf appearance */
   .story-shelf::after {
     content: '';
     position: absolute;

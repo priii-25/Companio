@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/ProfileStyles.css';
-
+import Navbar from './Navbar';
 const ProfileComponent = () => {
   const [profile, setProfile] = useState({});
   const [insights, setInsights] = useState({});
@@ -59,7 +59,9 @@ const ProfileComponent = () => {
 
   if (loading) return <div className="profile-container">Loading...</div>;
 
-  return (
+  return (  
+    <>
+    <Navbar /> 
     <div className="profile-container">
       <div className="vintage-background"></div>
       <div className="floating-shapes"></div>
@@ -165,6 +167,7 @@ const ProfileComponent = () => {
         </ul>
       </section>
     </div>
+    </>
   );
 };
 

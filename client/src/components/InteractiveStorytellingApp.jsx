@@ -113,6 +113,8 @@ const InteractiveStorytellingApp = () => {
   };
 
   return (
+    <>
+    <Navbar/>
     <div className="storybook-container">
       <div className="storybook-bg">
         <div className="sparkle-layer">
@@ -211,6 +213,7 @@ const InteractiveStorytellingApp = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
