@@ -113,7 +113,7 @@
   border: 2px dashed rgba(107, 162, 146, 0.3);
   position: relative;
   z-index: 1;
-  overflow: hidden;
+  /* Removed overflow: hidden */
 }
 
 .chatbot-card::before {
@@ -196,6 +196,8 @@
   gap: 15px;
   align-items: center;
   margin-top: 20px;
+  position: relative;
+  z-index: 10; /* Ensure it's above other elements */
 }
 
 .input-textarea {
@@ -209,6 +211,7 @@
   height: 70px;
   font-family: 'Lora', serif;
   transition: var(--transition);
+  pointer-events: auto; /* Ensure it can receive input */
 }
 
 .input-textarea:focus {
