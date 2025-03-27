@@ -1039,3 +1039,98 @@
   width: 30px;
   height: 30px;
 }
+.form-group {
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.1rem;
+  color: #5d4037;
+  margin-bottom: 0.5rem;
+}
+
+.form-group .form-icon {
+  margin-right: 0.5rem;
+  color: #8d5524;
+}
+
+.form-group .input-wrapper {
+  position: relative;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 2px solid #d7ccc8;
+  border-radius: 8px;
+  background: rgba(255, 248, 225, 0.9);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1rem;
+  color: #4e342e;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #8d5524;
+  box-shadow: 0 0 8px rgba(141, 85, 36, 0.3);
+  outline: none;
+}
+
+.form-group .input-focus-effect {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  pointer-events: none;
+  transition: border-color 0.3s ease;
+}
+
+.form-group.focused .input-focus-effect {
+  border-color: #8d5524;
+}
+
+.form-group .input-decorations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.form-group .input-decoration {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #d7ccc8;
+  border-radius: 50%;
+}
+
+.form-group .input-decoration.top-left { top: -5px; left: -5px; }
+.form-group .input-decoration.top-right { top: -5px; right: -5px; }
+.form-group .input-decoration.bottom-left { bottom: -5px; left: -5px; }
+.form-group .input-decoration.bottom-right { bottom: -5px; right: -5px; }
+
+.memory-with {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  color: #5d4037;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.memory-with .memory-icon {
+  margin-right: 0.5rem;
+  color: #8d5524;
+}

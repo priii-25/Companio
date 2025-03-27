@@ -10,7 +10,8 @@ const icons = {
   save: "M17 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3ZM19 19H5V5H16.17L19 7.83V19ZM12 12C10.34 12 9 13.34 9 15C9 16.66 10.34 18 12 18C13.66 18 15 16.66 15 15C15 13.34 13.66 12 12 12ZM6 6H15V10H6V6Z",
   heart: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
   polaroid: "M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 14H4V7h4.05l1.83-2h4.24l1.83 2H20v12zM12 8c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z",
-  star: "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+  star: "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z",
+  people: "M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
 };
 
 // More nostalgic and comforting prompts
@@ -40,6 +41,7 @@ const AnimatedIcon = ({ path, className = "" }) => (
 const JournalingComponent = () => {
   const [image, setImage] = useState(null);
   const [journalText, setJournalText] = useState('');
+  const [withPeople, setWithPeople] = useState([]); // New state for people in the memory
   const [isRecording, setIsRecording] = useState(false);
   const [memories, setMemories] = useState([]);
   const [prompt, setPrompt] = useState('');
@@ -83,7 +85,7 @@ const JournalingComponent = () => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const response = await axios.get('http://localhost:5000/api/journal', config);
       setMemories(response.data);
-      setError(''); // Clear error on success
+      setError('');
     } catch (error) {
       console.error('Error fetching memories:', error.response?.data || error.message);
       if (error.response?.status === 401) {
@@ -138,7 +140,6 @@ const JournalingComponent = () => {
               setCapturing(false);
               return;
             }
-            // Fetch the image from the server's endpoint with a delay
             setTimeout(() => {
               fetch('http://localhost:5000/api/captured-frame', {
                 headers: { Authorization: `Bearer ${token}` }
@@ -177,23 +178,14 @@ const JournalingComponent = () => {
                   }
                   setCapturing(false);
                 });
-            }, 2000); // Increased delay to 2 seconds to ensure file is renamed
+            }, 2000);
           } else if (data.type === 'faceRecognition') {
             console.log('Face recognition result:', data.result);
             if (data.result.faces) {
-              data.result.faces.forEach(face => {
-                if (face.recognized && face.name) {
-                  setJournalText((prev) => {
-                    const newText = prev ? `${prev}\n` : '';
-                    return `${newText}With: ${face.name}`;
-                  });
-                } else {
-                  setJournalText((prev) => {
-                    const newText = prev ? `${prev}\n` : '';
-                    return `${newText}New person added`;
-                  });
-                }
-              });
+              const recognizedNames = data.result.faces
+                .filter(face => face.recognized && face.name)
+                .map(face => face.name);
+              setWithPeople(prev => [...new Set([...prev, ...recognizedNames])]); // Avoid duplicates
             }
           }
         } catch (e) {
@@ -313,7 +305,7 @@ const JournalingComponent = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Capture timed out')), 90000); // Increased to 90 seconds
+        setTimeout(() => reject(new Error('Capture timed out')), 90000);
       });
 
       await Promise.race([
@@ -406,6 +398,7 @@ const JournalingComponent = () => {
         { 
           image, 
           text: journalText,
+          withPeople, // Include the new field
           mood,
           filter,
           isFavorited,
@@ -424,6 +417,7 @@ const JournalingComponent = () => {
       setTimeout(() => {
         setImage(null);
         setJournalText('');
+        setWithPeople([]); // Reset withPeople
         setSuccess('');
         setFilter('none');
         setIsFavorited(false);
@@ -627,6 +621,32 @@ const JournalingComponent = () => {
             />
           </div>
 
+          <div className={`form-group ${focusedField === 'withPeople' ? 'focused' : ''}`}>
+            <label htmlFor="with-people">
+              <AnimatedIcon path={icons.people} className="form-icon" />
+              Who was with you?
+            </label>
+            <div className="input-wrapper">
+              <input
+                id="with-people"
+                name="with-people"
+                value={withPeople.join(', ')}
+                onChange={(e) => setWithPeople(e.target.value.split(', ').filter(name => name.trim()))}
+                placeholder="Names of people in this memory"
+                onFocus={() => setFocusedField('withPeople')}
+                onBlur={() => setFocusedField(null)}
+                className="vintage-input"
+              />
+              <div className="input-focus-effect"></div>
+              <div className="input-decorations">
+                <div className="input-decoration top-left"></div>
+                <div className="input-decoration top-right"></div>
+                <div className="input-decoration bottom-left"></div>
+                <div className="input-decoration bottom-right"></div>
+              </div>
+            </div>
+          </div>
+
           <div className={`form-group ${focusedField === 'journal' ? 'focused' : ''}`}>
             <label htmlFor="journal-text">
               <AnimatedIcon path={icons.star} className="form-icon" />
@@ -638,7 +658,7 @@ const JournalingComponent = () => {
                 name="journal-text"
                 value={journalText}
                 onChange={(e) => setJournalText(e.target.value)}
-                placeholder="What makes this moment tug at your heartstrings? Who shared this moment with you? What sensations do you remember?"
+                placeholder="What makes this moment tug at your heartstrings? What sensations do you remember?"
                 onFocus={() => setFocusedField('journal')}
                 onBlur={() => setFocusedField(null)}
                 rows={4}
@@ -734,6 +754,12 @@ const JournalingComponent = () => {
                   )}
                 </div>
                 <div className="memory-content">
+                  {memory.withPeople && memory.withPeople.length > 0 && (
+                    <p className="memory-with">
+                      <AnimatedIcon path={icons.people} className="memory-icon" />
+                      With: {memory.withPeople.join(', ')}
+                    </p>
+                  )}
                   <p className="memory-text">{memory.text}</p>
                   {memory.mood && (
                     <div className="memory-mood">

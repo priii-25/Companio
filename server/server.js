@@ -77,11 +77,12 @@ const routineSchema = new mongoose.Schema({
 
 const Routine = mongoose.model('Routine', routineSchema);
 
-// Journal Schema
+// Journal Schema (Updated with withPeople field)
 const journalSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Added index for better query performance
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   image: { type: String, required: true },
   text: { type: String, required: true },
+  withPeople: [{ type: String }], // New field to store names of people in the memory
   mood: { type: String },
   filter: { type: String },
   isFavorited: { type: Boolean, default: false },
@@ -105,11 +106,11 @@ const Story = mongoose.model('Story', storySchema);
 // Middleware to verify JWT with additional logging
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
-  console.log('Received token in authMiddleware:', token); // Log the token for debugging
+  console.log('Received token in authMiddleware:', token);
   if (!token) return res.status(401).json({ message: 'No token provided' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Decoded token payload:', decoded); // Log the decoded payload
+    console.log('Decoded token payload:', decoded);
     req.userId = decoded.userId;
     next();
   } catch (error) {
@@ -170,12 +171,21 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Journal Routes
+// Journal Routes (Updated to include withPeople)
 app.post('/api/journal', authMiddleware, async (req, res) => {
   try {
-    const { image, text, mood, filter, isFavorited, weatherEffect } = req.body;
+    const { image, text, withPeople, mood, filter, isFavorited, weatherEffect } = req.body;
     if (!image || !text) return res.status(400).json({ message: 'Image and text are required' });
-    const journalEntry = new Journal({ userId: req.userId, image, text, mood, filter, isFavorited, weatherEffect });
+    const journalEntry = new Journal({ 
+      userId: req.userId, 
+      image, 
+      text, 
+      withPeople: withPeople || [], // Default to empty array if not provided
+      mood, 
+      filter, 
+      isFavorited, 
+      weatherEffect 
+    });
     await journalEntry.save();
     res.status(201).json({ message: 'Journal entry saved', journalEntry });
   } catch (error) {
