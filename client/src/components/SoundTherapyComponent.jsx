@@ -3,24 +3,24 @@ import '../styles/SoundTherapyComponent.css';
 
 const soundTherapyOptions = {
   calm: [
-    { name: "Ocean Waves", audio: "/sounds/ocean-waves.mp3", icon: "🌊", description: "Gentle waves washing against the shore" },
-    { name: "Rain Sounds", audio: "/sounds/rain.mp3", icon: "🌧️", description: "Soft rainfall on a quiet afternoon" },
-    { name: "Wind Chimes", audio: "/sounds/wind-chimes.mp3", icon: "🎐", description: "Delicate chimes dancing in the breeze" }
+    { name: "brown noise", audio: "/sounds/relaxing-smoothed-brown-noise-294838.mp3", icon: "🌊", description: "Gentle waves washing against the shore" },
+    { name: "ocean waves", audio: "/sounds/relaxing-ocean-waves-high-quality-recorded-177004.mp3", icon: "🌧️", description: "Soft rainfall on a quiet afternoon" },
+    { name: "guitar", audio: "/sounds/relaxing-guitar-loop-v5-245859.mp3", icon: "🎐", description: "Delicate chimes dancing in the breeze" }
   ],
   focus: [
     { name: "White Noise", audio: "/sounds/white-noise.mp3", icon: "⚪", description: "Steady background noise to help concentration" },
     { name: "Coffee Shop", audio: "/sounds/coffee-shop.mp3", icon: "☕", description: "Ambient coffee shop sounds for productivity" },
     { name: "Soft Piano", audio: "/sounds/soft-piano.mp3", icon: "🎹", description: "Gentle piano melodies for deep focus" }
   ],
-  sleep: [
-    { name: "Night Sounds", audio: "/sounds/night-sounds.mp3", icon: "🌙", description: "Crickets and gentle night ambience" },
-    { name: "Deep Breathing", audio: "/sounds/deep-breathing.mp3", icon: "🧘", description: "Guided breathing pattern for sleep" },
-    { name: "Lullaby", audio: "/sounds/lullaby.mp3", icon: "🛌", description: "Soft melody to help drift into sleep" }
+  nature: [
+    { name: "birds chirping", audio: "/sounds/birds-chirping-calm-173695.mp3", icon: "🌙", description: "Crickets and gentle night ambience" },
+    { name: "jungle", audio: "/sounds/jungle-nature-229896.mp3", icon: "🧘", description: "Guided breathing pattern for sleep" },
+    { name: "Lullaby", audio: "/sounds/nature-216798.mp3", icon: "🛌", description: "Soft melody to help drift into sleep" }
   ],
   energize: [
-    { name: "Morning Birds", audio: "/sounds/morning-birds.mp3", icon: "🐦", description: "Cheerful birdsong to lift your spirits" },
-    { name: "Upbeat Nature", audio: "/sounds/upbeat-nature.mp3", icon: "🌿", description: "Energizing blend of natural sounds" },
-    { name: "Positive Chimes", audio: "/sounds/positive-chimes.mp3", icon: "✨", description: "Bright, uplifting wind chimes" }
+    { name: "Morning Birds", audio: "/sounds/uplifting-pad-texture-113842.mp3", icon: "🐦", description: "Cheerful birdsong to lift your spirits" },
+    { name: "Upbeat Nature", audio: "/sounds/uplifting-pad-texture-113842.mp3", icon: "🌿", description: "Energizing blend of natural sounds" },
+    { name: "Positive Chimes", audio: "/sounds/uplifting-pad-texture-113842.mp3", icon: "✨", description: "Bright, uplifting wind chimes" }
   ]
 };
 
