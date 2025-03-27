@@ -22,3 +22,4 @@ ai/EmpatheticBot/Model/model.safetensors
 ai/EmpatheticBot/Model/special_tokens_map.json
 ai/EmpatheticBot/Model/vocab.json
 ai/EmpatheticBot/Model/config.py
+ai/EmpatheticBot/Model/tokenizer_config.json
