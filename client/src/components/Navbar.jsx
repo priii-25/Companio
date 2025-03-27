@@ -41,7 +41,7 @@ const Navbar = () => {
       <div className="navbar-container">
         <div className="navbar-brand">
           <AnimatedIcon path={navIcons.journal} className="brand-icon" />
-          <span className="brand-text">Memory Keeper</span>
+          <span className="brand-text">Companio</span>
         </div>
 
         <button className="hamburger-btn" onClick={toggleMenu}>

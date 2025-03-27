@@ -70,6 +70,8 @@ const EmpatheticChatbot = () => {
   }, [messages]);
 
   return (
+    <>
+    <Navbar />
     <div className="chatbot-container">
       <div className="vintage-overlay"></div>
       <div className="companion-backdrop">
@@ -126,6 +128,7 @@ const EmpatheticChatbot = () => {
         <p className="companion-note">I’m your quirky pal, collecting your stories like shiny pebbles!</p>
       </div>
     </div>
+    </>
   );
 };
 

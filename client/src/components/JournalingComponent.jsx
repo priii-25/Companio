@@ -549,6 +549,8 @@ const JournalingComponent = () => {
   };
 
   return (
+    <>
+    <Navbar/>
     <div className="journal-container">
       <div className="vintage-background"></div>
       <div className="floating-shapes"></div>
@@ -939,6 +941,7 @@ const JournalingComponent = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
