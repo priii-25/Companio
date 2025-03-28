@@ -59,7 +59,7 @@ cd ai/EmpatheticBot
 uvicorn conversation:app --reload
 ```
 
-###5. Set Up Environment Variables
+### 5. Set Up Environment Variables
 ```sh
 JWT_SECRET=your_secret_key
 PORT=your_port_number
