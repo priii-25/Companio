@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/ProfileStyles.css';
 import Navbar from './Navbar';
+
 const ProfileComponent = () => {
   const [profile, setProfile] = useState({});
   const [insights, setInsights] = useState({});
@@ -18,7 +19,7 @@ const ProfileComponent = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('http://localhost:5000/api/profile', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setProfile(response.data);
     } catch (err) {
@@ -33,7 +34,7 @@ const ProfileComponent = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('http://localhost:5000/api/profile/insights', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setInsights(response.data);
     } catch (err) {
@@ -41,16 +42,29 @@ const ProfileComponent = () => {
     }
   };
 
-  const handleUpdate = async (section, data) => {
+  const handleUpdate = async (updatedProfile) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put(
-        'http://localhost:5000/api/profile',
-        { [section]: data },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setProfile(response.data.profile);
+      const formData = new FormData();
+
+      // Append all profile fields to FormData
+      Object.entries(updatedProfile).forEach(([key, value]) => {
+        if (key === 'medicalReports') {
+          value.forEach(file => formData.append('profile[medicalReports]', file));
+        } else {
+          formData.append(`profile[${key}]`, JSON.stringify(value));
+        }
+      });
+
+      const response = await axios.put('http://localhost:5000/api/profile', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setProfile(response.data);
       setEditMode(false);
+      setError('');
     } catch (err) {
       setError('Failed to update profile.');
       console.error(err);
@@ -59,76 +73,95 @@ const ProfileComponent = () => {
 
   if (loading) return <div className="profile-container">Loading...</div>;
 
-  return (  
+  return (
     <>
-    <Navbar /> 
-    <div className="profile-container">
-      <div className="vintage-background"></div>
-      <div className="floating-shapes"></div>
+      <Navbar />
+      <div className="profile-container">
+        <div className="vintage-background"></div>
+        <div className="floating-shapes"></div>
 
-      <div className="profile-header">
-        <h1 className="vintage-title">My Profile</h1>
-        <div className="decorative-line"></div>
+        <div className="profile-header">
+          <h1 className="vintage-title">My Profile</h1>
+          <div className="decorative-line"></div>
+        </div>
+
+        {error && <div className="error-message">{error}</div>}
+
+        {/* Personal Information */}
+        <section className="profile-section vintage-paper">
+          <h2>Personal Information</h2>
+          {editMode ? (
+            <PersonalInfoForm profile={profile} onSave={handleUpdate} />
+          ) : (
+            <div>
+              <p><strong>Preferred Name:</strong> {profile.preferredName || 'Not set'}</p>
+              <p><strong>Birthday:</strong> {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not set'}</p>
+              <p><strong>Location:</strong> {profile.location || 'Not set'}</p>
+              <button className="edit-button" onClick={() => setEditMode(true)}>Edit</button>
+            </div>
+          )}
+        </section>
+
+        {/* Medical & Emergency Information */}
+        <section className="profile-section vintage-paper">
+          <h2>Medical & Emergency</h2>
+          {editMode ? (
+            <MedicalForm profile={profile} onSave={handleUpdate} />
+          ) : (
+            <div>
+              <p><strong>Conditions:</strong> {profile.medicalHistory?.length ? profile.medicalHistory.map(m => m.condition).join(', ') : 'None'}</p>
+              <p><strong>Medications:</strong> {profile.medications?.length ? profile.medicalHistory.map(m => `${m.name}${m.schedule ? ` (${m.schedule})` : ''}`).join(', ') : 'None'}</p>
+              <p><strong>Allergies:</strong> {profile.allergies?.length ? profile.allergies.join(', ') : 'None'}</p>
+              <p><strong>Caregivers:</strong> {profile.caregiverContacts?.length ? profile.caregiverContacts.map(c => `${c.name}${c.phone ? ` (${c.phone})` : ''}`).join(', ') : 'None'}</p>
+              <p>
+                <strong>Medical Reports:</strong>{' '}
+                {profile.medicalReports?.length ? (
+                  <ul>
+                    {profile.medicalReports.map((report, index) => (
+                      <li key={index}>
+                        <a
+                          href={`http://localhost:5000/${report.path}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#007bff', textDecoration: 'underline' }}
+                        >
+                          {report.filename}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  'None'
+                )}
+              </p>
+              <button className="edit-button" onClick={() => setEditMode(true)}>Edit</button>
+            </div>
+          )}
+        </section>
+
+        {/* Accessibility Settings */}
+        <section className="profile-section vintage-paper">
+          <h2>Accessibility</h2>
+          {editMode ? (
+            <AccessibilityForm profile={profile} onSave={handleUpdate} />
+          ) : (
+            <div>
+              <p><strong>Font Size:</strong> {profile.accessibility?.fontSize || 'Large'}</p>
+              <p><strong>Color Scheme:</strong> {profile.accessibility?.colorScheme || 'Soothing Pastels'}</p>
+              <p><strong>Voice Activation:</strong> {profile.accessibility?.voiceActivation ? 'Enabled' : 'Disabled'}</p>
+              <button className="edit-button" onClick={() => setEditMode(true)}>Edit</button>
+            </div>
+          )}
+        </section>
+
+        {/* Insights */}
+        <section className="profile-section vintage-paper">
+          <h2>Insights</h2>
+          <p><strong>Total Memories:</strong> {insights.totalMemories || 0}</p>
+          <p><strong>Favorite Memories:</strong> {insights.favoriteMemories || 0}</p>
+          <p><strong>Mood Breakdown:</strong> {insights.moodBreakdown ? Object.entries(insights.moodBreakdown).map(([mood, count]) => `${mood}: ${count}`).join(', ') : 'No data'}</p>
+        </section>
       </div>
-
-      {error && <div className="error-message">{error}</div>}
-
-      {/* Personal Information */}
-      <section className="profile-section vintage-paper">
-        <h2>Personal Information</h2>
-        {editMode ? (
-          <PersonalInfoForm profile={profile} onSave={(data) => handleUpdate('personal', data)} />
-        ) : (
-          <div>
-            <p><strong>Name:</strong> {profile.preferredName || 'Not set'}</p>
-            <p><strong>Birthday:</strong> {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not set'}</p>
-            <p><strong>Location:</strong> {profile.location || 'Not set'}</p>
-            <button className="edit-button" onClick={() => setEditMode(true)}>Edit</button>
-          </div>
-        )}
-      </section>
-
-      {/* Medical & Emergency Information */}
-      <section className="profile-section vintage-paper">
-        <h2>Medical & Emergency</h2>
-        {editMode ? (
-          <MedicalForm profile={profile} onSave={(data) => handleUpdate('medical', data)} />
-        ) : (
-          <div>
-            <p><strong>Conditions:</strong> {profile.medicalHistory?.length ? profile.medicalHistory.map(m => m.condition).join(', ') : 'None'}</p>
-            <p><strong>Medications:</strong> {profile.medications?.length ? profile.medications.map(m => `${m.name} (${m.schedule})`).join(', ') : 'None'}</p>
-            <p><strong>Allergies:</strong> {profile.allergies?.length ? profile.allergies.join(', ') : 'None'}</p>
-            <p><strong>Caregivers:</strong> {profile.caregiverContacts?.length ? profile.caregiverContacts.map(c => c.name).join(', ') : 'None'}</p>
-            <button className="edit-button" onClick={() => setEditMode(true)}>Edit</button>
-          </div>
-        )}
-      </section>
-
-      {/* Accessibility Settings */}
-      <section className="profile-section vintage-paper">
-        <h2>Accessibility</h2>
-        <div>
-          <label>Font Size:</label>
-          <select
-            value={profile.accessibility?.fontSize || 'Large'}
-            onChange={(e) => handleUpdate('accessibility', { ...profile.accessibility, fontSize: e.target.value })}
-          >
-            <option value="Large">Large</option>
-            <option value="Extra Large">Extra Large</option>
-          </select>
-        </div>
-        <div>
-          <label>Color Scheme:</label>
-          <select
-            value={profile.accessibility?.colorScheme || 'Soothing Pastels'}
-            onChange={(e) => handleUpdate('accessibility', { ...profile.accessibility, colorScheme: e.target.value })}
-          >
-            <option value="Soothing Pastels">Soothing Pastels</option>
-            <option value="High Contrast">High Contrast</option>
-          </select>
-        </div>
-      </section>
-    </div>
     </>
   );
 };
@@ -137,32 +170,49 @@ const PersonalInfoForm = ({ profile, onSave }) => {
   const [formData, setFormData] = useState({
     preferredName: profile.preferredName || '',
     dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : '',
-    location: profile.location || ''
+    location: profile.location || '',
   });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const handleSubmit = () => {
+    onSave({ ...profile, ...formData });
+  };
+
   return (
     <div>
       <label>Preferred Name:</label>
-      <input name="preferredName" value={formData.preferredName} onChange={handleChange} />
+      <input name="preferredName" value={formData.preferredName} onChange={handleChange} placeholder="What do you like to be called?" />
       <label>Birthday:</label>
       <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} />
       <label>Location:</label>
-      <input name="location" value={formData.location} onChange={handleChange} />
-      <button onClick={() => onSave(formData)}>Save</button>
+      <input name="location" value={formData.location} onChange={handleChange} placeholder="Where do you live?" />
+      <button onClick={handleSubmit}>Save</button>
     </div>
   );
 };
 
 const MedicalForm = ({ profile, onSave }) => {
-  const [medicalHistory, setMedicalHistory] = useState(profile.medicalHistory || [{ condition: '', notes: '' }]);
-  const [medications, setMedications] = useState(profile.medications || [{ name: '', dosage: '', schedule: '' }]);
-  const [allergies, setAllergies] = useState(profile.allergies || ['']);
-  const [caregiverContacts, setCaregiverContacts] = useState(profile.caregiverContacts || [{ name: '', phone: '', email: '' }]);
+  const [medicalHistory, setMedicalHistory] = useState(profile.medicalHistory?.length ? profile.medicalHistory : [{ condition: '', notes: '' }]);
+  const [medications, setMedications] = useState(profile.medications?.length ? profile.medications : [{ name: '', dosage: '', schedule: '' }]);
+  const [allergies, setAllergies] = useState(profile.allergies?.length ? profile.allergies : ['']);
+  const [caregiverContacts, setCaregiverContacts] = useState(profile.caregiverContacts?.length ? profile.caregiverContacts : [{ name: '', phone: '', email: '' }]);
+  const [medicalReports, setMedicalReports] = useState(profile.medicalReports || []);
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setMedicalReports(files);
+  };
 
   const handleSave = () => {
-    onSave({ medicalHistory, medications, allergies, caregiverContacts });
+    onSave({
+      ...profile,
+      medicalHistory,
+      medications,
+      allergies,
+      caregiverContacts,
+      medicalReports,
+    });
   };
 
   return (
@@ -256,8 +306,88 @@ const MedicalForm = ({ profile, onSave }) => {
             }}
             placeholder="Phone"
           />
+          <input
+            value={contact.email}
+            onChange={(e) => {
+              const newContacts = [...caregiverContacts];
+              newContacts[index].email = e.target.value;
+              setCaregiverContacts(newContacts);
+            }}
+            placeholder="Email"
+          />
         </div>
       ))}
+      <label>Medical Reports (PDFs):</label>
+      <input type="file" accept=".pdf" multiple onChange={handleFileChange} />
+      {medicalReports.length > 0 && (
+        <ul>
+          {medicalReports.map((report, index) => (
+            <li key={index}>
+              {report.name || (
+                <a
+                  href={`http://localhost:5000/${report.path}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#007bff', textDecoration: 'underline' }}
+                >
+                  {report.filename}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <button onClick={handleSave}>Save</button>
+    </div>
+  );
+};
+
+const AccessibilityForm = ({ profile, onSave }) => {
+  const [accessibility, setAccessibility] = useState({
+    fontSize: profile.accessibility?.fontSize || 'Large',
+    colorScheme: profile.accessibility?.colorScheme || 'Soothing Pastels',
+    voiceActivation: profile.accessibility?.voiceActivation || false,
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setAccessibility(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSave = () => {
+    onSave({ ...profile, accessibility });
+  };
+
+  return (
+    <div>
+      <div>
+        <label>Font Size:</label>
+        <select name="fontSize" value={accessibility.fontSize} onChange={handleChange}>
+          <option value="Large">Large</option>
+          <option value="Extra Large">Extra Large</option>
+        </select>
+      </div>
+      <div>
+        <label>Color Scheme:</label>
+        <select name="colorScheme" value={accessibility.colorScheme} onChange={handleChange}>
+          <option value="Soothing Pastels">Soothing Pastels</option>
+          <option value="High Contrast">High Contrast</option>
+        </select>
+      </div>
+      <div>
+        <label>
+          <input
+            type="checkbox"
+            name="voiceActivation"
+            checked={accessibility.voiceActivation}
+            onChange={handleChange}
+          />
+          Enable Voice Activation
+        </label>
+      </div>
       <button onClick={handleSave}>Save</button>
     </div>
   );

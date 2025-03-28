@@ -13,7 +13,7 @@ const ProfileSetup = ({ onSubmit }) => {
     allergies: [''],
     caregiverContacts: [{ name: '', phone: '', email: '' }],
     accessibility: { fontSize: 'Large', colorScheme: 'Soothing Pastels', voiceActivation: true },
-    medicalReports: [] // New field for storing PDF files
+    medicalReports: [],
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -21,22 +21,21 @@ const ProfileSetup = ({ onSubmit }) => {
 
   const handleChange = (e, section, index) => {
     const { name, value } = e.target;
-
     if (section === 'simple') {
       setProfileData({ ...profileData, [name]: value });
     } else if (section === 'array') {
       const updatedArray = [...(profileData[name] || [])];
-      updatedArray[index] = value;
+      updatedArray[index] = value || '';
       setProfileData({ ...profileData, [name]: updatedArray });
     } else if (section === 'objectArray') {
       const field = e.target.dataset.field;
-      const updatedArray = [...profileData[name]];
-      updatedArray[index] = { ...updatedArray[index], [field]: value };
+      const updatedArray = [...(profileData[name] || [])];
+      updatedArray[index] = { ...(updatedArray[index] || {}), [field]: value || '' };
       setProfileData({ ...profileData, [name]: updatedArray });
     } else if (section === 'accessibility') {
       setProfileData({
         ...profileData,
-        accessibility: { ...profileData.accessibility, [name]: value }
+        accessibility: { ...profileData.accessibility, [name]: value },
       });
     }
   };
@@ -44,11 +43,10 @@ const ProfileSetup = ({ onSubmit }) => {
   const handleCheckboxChange = (e) => {
     setProfileData({
       ...profileData,
-      accessibility: { ...profileData.accessibility, voiceActivation: e.target.checked }
+      accessibility: { ...profileData.accessibility, voiceActivation: e.target.checked },
     });
   };
 
-  // Handle multiple PDF uploads
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     setProfileData({ ...profileData, medicalReports: files });
@@ -56,20 +54,36 @@ const ProfileSetup = ({ onSubmit }) => {
 
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
-  
+
   const handleSubmit = () => {
+    const cleanedProfileData = {
+      ...profileData,
+      medicalHistory: profileData.medicalHistory.filter(item => item.condition || item.notes),
+      medications: profileData.medications.filter(item => item.name || item.dosage || item.schedule),
+      allergies: profileData.allergies.filter(allergy => allergy),
+      caregiverContacts: profileData.caregiverContacts.filter(
+        contact => contact.name || contact.phone || contact.email
+      ),
+    };
+
     const formData = new FormData();
-    Object.entries(profileData).forEach(([key, value]) => {
+    Object.entries(cleanedProfileData).forEach(([key, value]) => {
       if (key === 'medicalReports') {
         value.forEach((file, index) => {
-          formData.append(`medicalReports[${index}]`, file);
+          formData.append(`profile[medicalReports][${index}]`, file);
         });
       } else {
-        formData.append(key, JSON.stringify(value));
+        formData.append(`profile[${key}]`, JSON.stringify(value));
       }
     });
-    console.log('Submitting profile data:', profileData);
+
+    console.log('Submitting profile data from ProfileSetup:');
+    for (let pair of formData.entries()) {
+      console.log(`${pair[0]}: ${pair[1]}`);
+    }
+
     setSuccess('✨ Profile set up successfully! Welcome to your journey...');
+    setError('');
     onSubmit(formData);
     setTimeout(() => navigate('/journal'), 1000);
   };
@@ -107,7 +121,9 @@ const ProfileSetup = ({ onSubmit }) => {
                 placeholder="Where do you live?"
               />
             </div>
-            <button className="next-button" onClick={handleNext}>Next</button>
+            <button className="next-button" onClick={handleNext}>
+              Next
+            </button>
           </div>
         );
       case 2:
@@ -190,8 +206,12 @@ const ProfileSetup = ({ onSubmit }) => {
                 </ul>
               )}
             </div>
-            <button className="back-button" onClick={handleBack}>Back</button>
-            <button className="next-button" onClick={handleNext}>Next</button>
+            <button className="back-button" onClick={handleBack}>
+              Back
+            </button>
+            <button className="next-button" onClick={handleNext}>
+              Next
+            </button>
           </div>
         );
       case 3:
@@ -220,8 +240,22 @@ const ProfileSetup = ({ onSubmit }) => {
                 <option value="High Contrast">High Contrast</option>
               </select>
             </div>
-            <button className="back-button" onClick={handleBack}>Back</button>
-            <button className="next-button" onClick={handleSubmit}>Finish</button>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={profileData.accessibility.voiceActivation}
+                  onChange={handleCheckboxChange}
+                />
+                Enable Voice Activation
+              </label>
+            </div>
+            <button className="back-button" onClick={handleBack}>
+              Back
+            </button>
+            <button className="next-button" onClick={handleSubmit}>
+              Finish
+            </button>
           </div>
         );
       default:
@@ -238,9 +272,7 @@ const ProfileSetup = ({ onSubmit }) => {
         <p className="setup-subtitle">A few details to make this yours</p>
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
-        <div className="step-indicator">
-          Step {step} of 3
-        </div>
+        <div className="step-indicator">Step {step} of 3</div>
         {renderStep()}
       </div>
     </div>
