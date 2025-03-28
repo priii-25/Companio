@@ -61,7 +61,9 @@ uvicorn conversation:app --reload
 
 ### 5. Set Up Environment Variables
 ```sh
-JWT_SECRET=your_secret_key
+MONGODB_URI=our_database_uri
+JWT_SECRET=our_secret_key
 PORT=your_port_number
 OPENWEATHER_API_KEY=your_api_key
+GEMINI_API_KEY=our_fine-tuned_gemini_api_key
 ```
