@@ -16,7 +16,6 @@ With **photo-based reminiscence therapy, AI-powered journaling, and sentiment-aw
 ### **2. Memory Recall & Cognitive Support**
 - **Photo-Based Reminiscence Therapy** – Recognizes people in images and retrieves past memories associated with them.
 - **AI-Powered Journaling** – Allows users to upload photos and write journals with automatic face-tagging.
-- **FAISS-Powered Memory Retrieval** – Enables fast and accurate memory searches.
 
 ### **3. Smart Daily Assistance**
 - **Routine Manager** – Syncs with Google Calendar for medication reminders.
@@ -29,10 +28,8 @@ With **photo-based reminiscence therapy, AI-powered journaling, and sentiment-aw
 - **Emergency Assistance** – Speech emotion recognition alerts caregivers during distress.
 
 ### **5. Scalable & Secure Infrastructure**
-- **Azure AI Services** – Integrates OpenAI, Blob Storage, Cosmos DB, and Speech-to-Text.
 - **Microservices Architecture** – Modular backend for efficient scaling.
 - **Security Measures** – End-to-end encryption, password hashing, and secure medical data storage.
-
 
 ---
 
