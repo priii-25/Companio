@@ -11,9 +11,9 @@ const icons = {
   save: "M17 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3ZM19 19H5V5H16.17L19 7.83V19ZM12 12C10.34 12 9 13.34 9 15C9 16.66 10.34 18 12 18C13.66 18 15 15.66 15 15C15 13.34 13.66 12 12 12ZM6 6H15V10H6V6Z",
   heart: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
   polaroid: "M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 14H4V7h4.05l1.83-2h4.24l1.83 2H20v12zM12 8c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z",
-  star: "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z",
+  star: "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4,82L12 17.27z",
   people: "M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z",
-  recall: "M21 8H3V6h18v2zm-2 4H5v-2h14v2zm-4 4H9v-2h6v2zm6 4H3v-2h18v2zM10 18h4v2h-4v-2zm0-12h4V4h-4v2z",
+  recall: "M21 8H3V6h18v2zm-2 4H5v-2h14v2zm-4 4H9v-2h6v2zm6 4H3v-2h18v2zM10 18h4v2h-4v-2zm0-12h4V12h-4v2z",
 };
 
 // More nostalgic and comforting prompts
@@ -44,7 +44,7 @@ const JournalingComponent = () => {
   const [image, setImage] = useState(null);
   const [journalText, setJournalText] = useState('');
   const [withPeople, setWithPeople] = useState([]);
-  const [isRecording, setIsRecording] = useState(null); // Tracks which field is recording: null, 'withPeople', or 'journalText'
+  const [isRecording, setIsRecording] = useState(null);
   const [memories, setMemories] = useState([]);
   const [prompt, setPrompt] = useState('');
   const [focusedField, setFocusedField] = useState(null);
@@ -58,24 +58,21 @@ const JournalingComponent = () => {
   const [capturing, setCapturing] = useState(false);
   const fileInputRef = useRef(null);
   const journalCardRef = useRef(null);
-  const recognitionRef = useRef(null); // Ref for SpeechRecognition instance
-  const currentFieldRef = useRef(null); // Local ref to track the current field
+  const recognitionRef = useRef(null);
+  const currentFieldRef = useRef(null);
 
-  // New state for recall feature
   const [showRecallOptions, setShowRecallOptions] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [personMemories, setPersonMemories] = useState([]);
   const [peopleList, setPeopleList] = useState([]);
   const [recalling, setRecalling] = useState(false);
 
-  // Mood options
   const moodOptions = [
     "Joyful", "Peaceful", "Nostalgic", "Grateful",
     "Hopeful", "Cozy", "Reflective", "Content",
     "Dreamy", "Inspired"
   ];
 
-  // Weather effects for ambiance
   const weatherEffects = [
     { label: "None", value: "" },
     { label: "Gentle Rain", value: "rain" },
@@ -84,7 +81,6 @@ const JournalingComponent = () => {
     { label: "Autumn Leaves", value: "leaves" }
   ];
 
-  // Fetch memories
   const fetchMemories = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -110,7 +106,6 @@ const JournalingComponent = () => {
     }
   };
 
-  // Log state changes for debugging
   useEffect(() => {
     console.log('State - withPeople:', withPeople);
   }, [withPeople]);
@@ -123,7 +118,6 @@ const JournalingComponent = () => {
     console.log('State - isRecording:', isRecording);
   }, [isRecording]);
 
-  // Initial setup with conditional fetch and SpeechRecognition
   useEffect(() => {
     console.log('Initializing JournalingComponent...');
     const token = localStorage.getItem('token');
@@ -149,7 +143,6 @@ const JournalingComponent = () => {
     pageTurnSound.volume = 0.3;
     pageTurnSound.play().catch(e => console.log('Audio autoplay prevented:', e));
 
-    // Initialize SpeechRecognition
     console.log('Checking for SpeechRecognition support...');
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       console.log('SpeechRecognition is supported in this browser.');
@@ -160,7 +153,7 @@ const JournalingComponent = () => {
       recognitionRef.current.lang = 'en-US';
       console.log('SpeechRecognition initialized with lang: en-US, continuous: false, interimResults: false');
 
-      let hasResult = false; // Track if onresult has fired
+      let hasResult = false;
 
       recognitionRef.current.onstart = () => {
         console.log('Speech recognition started for field (ref):', currentFieldRef.current);
@@ -175,7 +168,7 @@ const JournalingComponent = () => {
           console.log('Transcript received:', transcript);
           console.log('Confidence:', event.results[0][0].confidence);
 
-          const field = currentFieldRef.current; // Use the ref to determine the field
+          const field = currentFieldRef.current;
           if (field === 'withPeople') {
             console.log('Updating withPeople with transcript:', transcript);
             const peopleArray = transcript.split(', ').filter(name => name.trim());
@@ -220,14 +213,13 @@ const JournalingComponent = () => {
         currentFieldRef.current = null;
         setIsRecording(null);
         console.log('isRecording set to null after end.');
-        hasResult = false; // Reset for the next session
+        hasResult = false;
       };
     } else {
       console.log('SpeechRecognition is NOT supported in this browser.');
       setError('Speech recognition is not supported in this browser.');
     }
 
-    // Set up WebSocket connection with retry
     let websocket;
     let retryCount = 0;
     const maxRetries = 5;
@@ -339,7 +331,6 @@ const JournalingComponent = () => {
     };
   }, []);
 
-  // Parallax effect
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!journalCardRef.current) return;
@@ -444,6 +435,7 @@ const JournalingComponent = () => {
       } else {
         setError('Failed to capture image from webcam: ' + (error.response?.data?.error || error.message));
       }
+    } finally {
       setCapturing(false);
     }
   };
@@ -459,7 +451,6 @@ const JournalingComponent = () => {
       return;
     }
 
-    // If a session is already running, stop it
     if (isRecording && isRecording !== field) {
       console.log('Stopping previous speech recognition session for field:', isRecording);
       try {
@@ -469,7 +460,6 @@ const JournalingComponent = () => {
         console.error('Error stopping previous speech recognition:', err);
         setError('Failed to stop previous speech recognition: ' + err.message);
       }
-      // Wait briefly to ensure the previous session has stopped
       setTimeout(() => {
         startRecognition(field);
       }, 100);
@@ -631,7 +621,8 @@ const JournalingComponent = () => {
       await axios.post('http://localhost:5000/api/face-recognition/capture', {}, config);
     } catch (error) {
       console.error('Error capturing for recall:', error);
-      setError('Failed to capture from webcam: ' + (error.response?.data?.error || error.message));
+      setError('Failed to capture from cam: ' + (error.response?.data?.error || error.message));
+    } finally {
       setRecalling(false);
     }
   };
@@ -641,26 +632,26 @@ const JournalingComponent = () => {
 
     return (
       <div className={`weather-effect ${weatherEffect}`}>
-        {weatherEffect === 'rain' && Array(20).fill().map((_, i) => (
+        {weatherEffect === 'rain' && Array(20).fill(0).map((_, i) => (
           <div key={i} className="raindrop" style={{ 
             left: `${Math.random() * 100}%`, 
             animationDuration: `${0.8 + Math.random()}s`,
             animationDelay: `${Math.random()}s`
           }}></div>
         ))}
-        {weatherEffect === 'snow' && Array(30).fill().map((_, i) => (
+        {weatherEffect === 'snow' && Array(30).fill(0).map((_, i) => (
           <div key={i} className="snowflake" style={{ 
             left: `${Math.random() * 100}%`, 
             animationDuration: `${3 + Math.random() * 5}s`,
             animationDelay: `${Math.random()}s`
           }}></div>
         ))}
-        {weatherEffect === 'sunshine' && Array(5).fill().map((_, i) => (
+        {weatherEffect === 'sunshine' && Array(5).fill(0).map((_, i) => (
           <div key={i} className="sunshine-ray" style={{ 
             transform: `rotate(${i * 72}deg)` 
           }}></div>
         ))}
-        {weatherEffect === 'leaves' && Array(15).fill().map((_, i) => (
+        {weatherEffect === 'leaves' && Array(15).fill(0).map((_, i) => (
           <div key={i} className="falling-leaf" style={{ 
             left: `${Math.random() * 100}%`, 
             animationDuration: `${5 + Math.random() * 8}s`,
@@ -810,7 +801,7 @@ const JournalingComponent = () => {
                 disabled={capturing}
               >
                 <AnimatedIcon path={icons.camera} />
-                <span>{capturing ? 'Capturing...' : 'Capture from Webcam'}</span>
+                <span>{capturing ? 'Capturing...' : 'Capture from cam'}</span>
               </button>
               <input
                 type="file"
@@ -819,46 +810,6 @@ const JournalingComponent = () => {
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
-            </div>
-
-            <div className="recall-actions">
-              <button 
-                className="action-button recall-button" 
-                onClick={() => setShowRecallOptions(!showRecallOptions)}
-              >
-                <AnimatedIcon path={icons.recall} />
-                <span>Recall Memories With...</span>
-              </button>
-
-              {showRecallOptions && (
-                <div className="recall-options">
-                  <div className="people-list">
-                    <h3>Choose a person:</h3>
-                    {peopleList.length > 0 ? (
-                      peopleList.map(person => (
-                        <button
-                          key={person}
-                          className="person-button"
-                          onClick={() => handleSelectPerson(person)}
-                          disabled={recalling}
-                        >
-                          {person}
-                        </button>
-                      ))
-                    ) : (
-                      <p>No people recorded yet.</p>
-                    )}
-                  </div>
-                  <button
-                    className="action-button webcam-recall-button"
-                    onClick={handleRecallFromWebcam}
-                    disabled={recalling}
-                  >
-                    <AnimatedIcon path={icons.camera} />
-                    <span>{recalling ? 'Recalling...' : 'Scan with Webcam'}</span>
-                  </button>
-                </div>
-              )}
             </div>
 
             <div className={`form-group ${focusedField === 'withPeople' ? 'focused' : ''}`}>
@@ -956,17 +907,74 @@ const JournalingComponent = () => {
               </select>
             </div>
 
-            <button 
-              className="save-button" 
-              onClick={handleSaveMemory} 
-              disabled={loading}
-            >
-              <AnimatedIcon path={icons.save} />
-              <span className="button-text">{loading ? 'Preserving...' : 'Save This Memory'}</span>
-              <span className="button-shine"></span>
-            </button>
+            <div className="form-footer">
+              <button 
+                className="save-button" 
+                onClick={handleSaveMemory} 
+                disabled={loading}
+              >
+                <AnimatedIcon path={icons.save} />
+                <span className="button-text">{loading ? 'Preserving...' : 'Save This Memory'}</span>
+                <span className="button-shine"></span>
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Recall With Button */}
+        <button 
+          className="fancy-recall-button cute-recall" 
+          onClick={() => setShowRecallOptions(true)}
+        >
+          <AnimatedIcon path={icons.recall} className="recall-icon" />
+          <span>Recall With...</span>
+          <span className="button-shine"></span>
+          <span className="cute-sparkle">✨</span>
+        </button>
+
+        {/* Modal for Recall Options */}
+        {showRecallOptions && (
+          <div className="recall-modal-overlay">
+            <div className="recall-modal">
+              <div className="modal-header">
+                <h3>Recall Memories</h3>
+                <button 
+                  className="modal-close-button"
+                  onClick={() => setShowRecallOptions(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="modal-content">
+                <div className="people-list">
+                  <h4>Choose a person:</h4>
+                  {peopleList.length > 0 ? (
+                    peopleList.map(person => (
+                      <button
+                        key={person}
+                        className="person-button"
+                        onClick={() => handleSelectPerson(person)}
+                        disabled={recalling}
+                      >
+                        {person}
+                      </button>
+                    ))
+                  ) : (
+                    <p>No people recorded yet.</p>
+                  )}
+                </div>
+                <button
+                  className="action-button webcam-recall-button"
+                  onClick={handleRecallFromWebcam}
+                  disabled={recalling}
+                >
+                  <AnimatedIcon path={icons.camera} />
+                  <span>{recalling ? 'Recalling...' : 'Scan with Webcam'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="memories-section">
           <div className="memories-header">

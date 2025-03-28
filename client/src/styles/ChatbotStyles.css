@@ -345,3 +345,182 @@
     height: 100px;
   }
 }
+/* ChatbotStyles.css */
+
+/* Wrapper for the textarea and mic button */
+.chatbot-input .input-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px; /* Space between textarea and send button */
+}
+
+/* Style the textarea */
+.chatbot-input .input-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px 40px 12px 16px; /* Add padding on the right for the mic button */
+  border: 2px solid #d4b2a8;
+  border-radius: 15px;
+  background: rgba(255, 245, 238, 0.9);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1rem;
+  color: #5c4033;
+  resize: none;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus effect for the textarea */
+.chatbot-input .input-textarea:focus {
+  border-color: #ff9999;
+  box-shadow: 0 0 10px rgba(255, 153, 153, 0.3);
+}
+
+/* Microphone button styling */
+.chatbot-input .mic-button {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.chatbot-input .mic-button .action-icon {
+  width: 20px;
+  height: 20px;
+  color: #ff9999;
+}
+
+.chatbot-input .mic-button:hover .action-icon {
+  color: #ff6666;
+  transform: scale(1.1);
+}
+
+.chatbot-input .mic-button.recording .action-icon {
+  color: #ff3333;
+  animation: pulse 1s infinite;
+}
+
+/* Pulse animation for recording state */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Input focus effect (decorative glow) */
+.chatbot-input .input-focus-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 15px;
+  pointer-events: none;
+  box-shadow: inset 0 0 5px rgba(255, 153, 153, 0.2);
+  transition: box-shadow 0.3s ease;
+}
+
+.chatbot-input .input-textarea:focus + .mic-button + .input-focus-effect {
+  box-shadow: inset 0 0 10px rgba(255, 153, 153, 0.5);
+}
+
+/* Decorative corners for the input */
+.chatbot-input .input-decorations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.chatbot-input .input-decoration {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: transparent;
+  border: 2px solid #ff9999;
+}
+
+.chatbot-input .input-decoration.top-left {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: 5px;
+}
+
+.chatbot-input .input-decoration.top-right {
+  top: -1px;
+  right: -1px;
+  border-left: none;
+  border-bottom: none;
+  border-top-right-radius: 5px;
+}
+
+.chatbot-input .input-decoration.bottom-left {
+  bottom: -1px;
+  left: -1px;
+  border-right: none;
+  border-top: none;
+  border-bottom-left-radius: 5px;
+}
+
+.chatbot-input .input-decoration.bottom-right {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+  border-bottom-right-radius: 5px;
+}
+
+/* Error message styling */
+.chatbot-input .error-message {
+  margin-top: 10px;
+  color: #ff3333;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Adjust the send button to fit with the new layout */
+.chatbot-input .send-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #ffcc99 0%, #ff9999 100%);
+  border: none;
+  border-radius: 20px;
+  color: #5c4033;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.chatbot-input .send-button:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #ff9999 0%, #ffcc99 100%);
+}
+
+.chatbot-input .send-button svg {
+  width: 20px;
+  height: 20px;
+  fill: #5c4033;
+}

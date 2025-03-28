@@ -7,12 +7,12 @@ import Navbar from './Navbar';
 
 // Weather emoticons (adjust paths to match your public folder structure)
 const weatherEmojis = {
-  sunny: '/emoticons/sunny-emoticon.png',
-  rain: '/emoticons/rainy-emoticon.png',
-  snow: '/emoticons/snowy-emoticon.png',
-  clouds: '/emoticons/cloudy-emoticon.png',
-  clear: '/emoticons/sunny-emoticon.png', // Map 'clear' to sunny
-  unknown: '/emoticons/unknown-emoticon.png', // Fallback
+  sunny: '/summer.png',
+  rain: '/summer.png',
+  snow: '/summer.png',
+  clouds: '/summer.png',
+  clear: '/summer.png', // Map 'clear' to sunny
+  unknown: '/summer.png', // Fallback
 };
 
 // Memory-inspired poetry

@@ -127,27 +127,6 @@ const ProfileComponent = () => {
             <option value="High Contrast">High Contrast</option>
           </select>
         </div>
-        <div>
-          <label>Voice Activation:</label>
-          <input
-            type="checkbox"
-            checked={profile.accessibility?.voiceActivation ?? true}
-            onChange={(e) => handleUpdate('accessibility', { ...profile.accessibility, voiceActivation: e.target.checked })}
-          />
-        </div>
-      </section>
-
-      {/* Progress & Insights */}
-      <section className="profile-section vintage-paper">
-        <h2>My Progress</h2>
-        <p><strong>Total Memories:</strong> {insights.totalMemories || 0}</p>
-        <p><strong>Favorite Memories:</strong> {insights.favoriteMemories || 0}</p>
-        <p><strong>Mood Breakdown:</strong></p>
-        <ul>
-          {Object.entries(insights.moodBreakdown || {}).map(([mood, count]) => (
-            <li key={mood}>{mood}: {count}</li>
-          ))}
-        </ul>
       </section>
     </div>
     </>

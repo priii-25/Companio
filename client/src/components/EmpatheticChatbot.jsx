@@ -3,6 +3,18 @@ import axios from 'axios';
 import '../styles/ChatbotStyles.css';
 import Navbar from './Navbar';
 
+// Define the microphone icon path (same as in JournalingComponent)
+const icons = {
+  microphone: "M12 14C13.66 14 15 12.66 15 11V5C15 3.34 13.66 2 12 2C10.34 2 9 3.34 9 5V11C9 12.66 10.34 14 12 14ZM11 5C11 4.45 11.45 4 12 4C12.55 4 13 4.45 13 5V11C13 11.55 12.55 12 12 12C11.45 12 11 11.55 11 11V5ZM17 11C17 13.76 14.76 16 12 16C9.24 16 7 13.76 7 11H5C5 14.53 7.61 17.43 11 17.9V21H13V17.9C16.39 17.43 19 14.53 19 11H17Z",
+};
+
+// Reusable AnimatedIcon component (same as in JournalingComponent)
+const AnimatedIcon = ({ path, className = "" }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`action-icon ${className}`}>
+    <path d={path} fill="currentColor" />
+  </svg>
+);
+
 const EmpatheticChatbot = () => {
   const [messages, setMessages] = useState([
     { sender: 'companion', text: "Oh, hello, my lovely wanderer! I’ve been waiting by the window for you. What’s stirring in your heart today?" }
@@ -10,7 +22,115 @@ const EmpatheticChatbot = () => {
   const [input, setInput] = useState('');
   const [keepsakes, setKeepsakes] = useState([]);
   const [conversationHistory, setConversationHistory] = useState([]);
+  const [isRecording, setIsRecording] = useState(false); // State for speech recording
+  const [error, setError] = useState(''); // State for error messages
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null); // Ref for SpeechRecognition instance
+
+  // Initialize SpeechRecognition
+  useEffect(() => {
+    console.log('Checking for SpeechRecognition support...');
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      console.log('SpeechRecognition is supported in this browser.');
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+      console.log('SpeechRecognition initialized with lang: en-US, continuous: false, interimResults: false');
+
+      let hasResult = false;
+
+      recognitionRef.current.onstart = () => {
+        console.log('Speech recognition started');
+        setIsRecording(true);
+      };
+
+      recognitionRef.current.onresult = (event) => {
+        console.log('Speech recognition result received:', event.results);
+        hasResult = true;
+        if (event.results.length > 0) {
+          const transcript = event.results[0][0].transcript;
+          console.log('Transcript received:', transcript);
+          console.log('Confidence:', event.results[0][0].confidence);
+          setInput(prev => {
+            const newInput = prev ? `${prev} ${transcript}` : transcript;
+            console.log('New input value:', newInput);
+            return newInput;
+          });
+        } else {
+          console.log('No results received from speech recognition.');
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+          setError('No speech detected. Please try again.');
+        } else if (event.error === 'not-allowed') {
+          setError('Microphone access denied. Please allow microphone access in your browser settings.');
+        } else if (event.error === 'network') {
+          setError('Network error. Please check your internet connection.');
+        } else {
+          setError(`Speech recognition failed: ${event.error}`);
+        }
+        setIsRecording(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        console.log('Speech recognition ended.');
+        if (!hasResult) {
+          setError('Speech recognition ended without results. Please try again.');
+        }
+        setIsRecording(false);
+        hasResult = false;
+      };
+    } else {
+      console.log('SpeechRecognition is NOT supported in this browser.');
+      setError('Speech recognition is not supported in this browser.');
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const handleVoiceInput = () => {
+    console.log('handleVoiceInput triggered');
+    console.log('Current isRecording state:', isRecording);
+    console.log('recognitionRef.current exists:', !!recognitionRef.current);
+
+    if (!recognitionRef.current) {
+      console.log('SpeechRecognition not available.');
+      setError('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    if (isRecording) {
+      console.log('Stopping speech recognition');
+      try {
+        recognitionRef.current.stop();
+        console.log('SpeechRecognition stop() called.');
+      } catch (err) {
+        console.error('Error stopping speech recognition:', err);
+        setError('Failed to stop speech recognition: ' + err.message);
+      }
+      setIsRecording(false);
+    } else {
+      console.log('Starting speech recognition');
+      setIsRecording(true);
+      try {
+        recognitionRef.current.start();
+        console.log('SpeechRecognition start() called.');
+      } catch (err) {
+        console.error('Error starting speech recognition:', err);
+        setError('Failed to start speech recognition: ' + err.message);
+        setIsRecording(false);
+      }
+    }
+  };
 
   const craftKeepsake = (text) => {
     const words = text.toLowerCase().split(' ');
@@ -122,23 +242,38 @@ const EmpatheticChatbot = () => {
           </div>
 
           <div className="chatbot-input">
-            <textarea
-              value={input}
-              onChange={(e) => {
-                console.log('Textarea value:', e.target.value);
-                setInput(e.target.value);
-              }}
-              placeholder="Whisper a thought, a memory, or a giggle..."
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              className="input-textarea"
-              tabIndex={0}
-              autoFocus
-            />
+            <div className="input-wrapper">
+              <textarea
+                value={input}
+                onChange={(e) => {
+                  console.log('Textarea value:', e.target.value);
+                  setInput(e.target.value);
+                }}
+                placeholder="Whisper a thought, a memory, or a giggle..."
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="input-textarea"
+                tabIndex={0}
+                autoFocus
+              />
+              <button
+                className={`mic-button ${isRecording ? 'recording' : ''}`}
+                onClick={handleVoiceInput}
+              >
+                <AnimatedIcon path={icons.microphone} />
+              </button>
+              <div className="input-focus-effect"></div>
+              <div className="input-decorations">
+                <div className="input-decoration top-left"></div>
+                <div className="input-decoration top-right"></div>
+                <div className="input-decoration bottom-left"></div>
+                <div className="input-decoration bottom-right"></div>
+              </div>
+            </div>
             <button onClick={handleSend} className="send-button">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M2 12L22 2L12 22L10 14L2 12Z" fill="currentColor" />
@@ -146,6 +281,11 @@ const EmpatheticChatbot = () => {
               <span>Toss it my way!</span>
             </button>
           </div>
+          {error && (
+            <div className="error-message">
+              <span>⚠️ {error}</span>
+            </div>
+          )}
         </div>
 
         <div className="companion-details">
