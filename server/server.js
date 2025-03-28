@@ -10,6 +10,19 @@ const { spawn } = require('child_process');
 const path = require('path');
 const WebSocket = require('ws');
 const fs = require('fs');
+const multer = require('multer');
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Ensure this directory exists
+  },
+  
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+  
+});
+
+const upload = multer({ storage });
 
 const testToken = jwt.sign(
   { userId: "67e2848c1dc2e45490665a46" },
@@ -22,7 +35,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
@@ -36,7 +49,6 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   profile: {
     preferredName: { type: String },
-    profilePicture: { type: String },
     dateOfBirth: { type: Date },
     location: { type: String },
     language: { type: String, default: 'English' },
@@ -45,11 +57,10 @@ const userSchema = new mongoose.Schema({
     allergies: [String],
     caregiverContacts: [{ name: String, phone: String, email: String }],
     emergencyContacts: [{ name: String, phone: String }],
-    recognizedFaces: [{ name: String, relationship: String, photo: String }],
+    medicalReports: [{ filename: String, path: String }],
     accessibility: {
       fontSize: { type: String, default: 'Large' },
       colorScheme: { type: String, default: 'Soothing Pastels' },
-      voiceActivation: { type: Boolean, default: true }
     }
   }
 });
@@ -140,11 +151,41 @@ wss.on('connection', (ws) => {
 });
 
 // User Routes
-app.post('/api/users/register', async (req, res) => {
+app.post('/api/users/register', upload.array('profile[medicalReports]'), async (req, res) => {
   try {
-    const { name, email, password, profile } = req.body;
+    const { name, email, password } = req.body;
+    const profile = {};
+
+    console.log('Raw req.body:', req.body);
+    console.log('Uploaded files:', req.files);
+
+    // Parse nested profile fields from req.body.profile
+    if (req.body.profile) {
+      for (let [key, value] of Object.entries(req.body.profile)) {
+        try {
+          profile[key] = JSON.parse(value);
+        } catch (e) {
+          profile[key] = value; // Fallback for non-JSON values
+        }
+      }
+    }
+
+    // Handle uploaded files (medicalReports)
+    if (req.files && req.files.length > 0) {
+      profile.medicalReports = req.files.map(file => ({
+        filename: file.filename,
+        path: file.path,
+      }));
+    }
+
+    console.log('Parsed registration data:', { name, email, password, profile });
+
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: 'User already exists' });
+    if (existingUser) {
+      console.log('User already exists:', email);
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
     const user = new User({ name, email, password, profile: profile || {} });
     await user.save();
     const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -154,7 +195,42 @@ app.post('/api/users/register', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+app.put('/api/profile', authMiddleware, upload.array('medicalReports'), async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const profileUpdates = {};
+
+    // Parse nested profile fields from req.body.profile
+    if (req.body.profile) {
+      for (let [key, value] of Object.entries(req.body.profile)) {
+        try {
+          profileUpdates[key] = JSON.parse(value);
+        } catch (e) {
+          profileUpdates[key] = value;
+        }
+      }
+    }
+
+    // Handle uploaded files (medicalReports)
+    if (req.files && req.files.length > 0) {
+      profileUpdates.medicalReports = req.files.map(file => ({
+        filename: file.filename,
+        path: file.path,
+      }));
+    }
+
+    console.log('Profile updates:', profileUpdates);
+
+    user.profile = { ...user.profile, ...profileUpdates };
+    await user.save();
+    res.json(user.profile);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 app.post('/api/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -237,43 +313,6 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
   }
 });
 
-app.put('/api/profile', authMiddleware, async (req, res) => {
-  try {
-    const updates = req.body;
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    user.profile = { ...user.profile, ...updates };
-    await user.save();
-    res.json({ message: 'Profile updated successfully', profile: user.profile });
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-app.get('/api/profile/insights', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const journalCount = await Journal.countDocuments({ userId });
-    const favoriteCount = await Journal.countDocuments({ userId, isFavorited: true });
-    const moodStats = await Journal.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
-      { $group: { _id: '$mood', count: { $sum: 1 } } }
-    ]);
-    const insights = {
-      totalMemories: journalCount,
-      favoriteMemories: favoriteCount,
-      moodBreakdown: moodStats.reduce((acc, item) => {
-        acc[item._id || 'No Mood'] = item.count;
-        return acc;
-      }, {})
-    };
-    res.json(insights);
-  } catch (error) {
-    console.error('Error fetching insights:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
 
 // Routine Routes
 app.get('/api/routines/:date', authMiddleware, async (req, res) => {
