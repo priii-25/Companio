@@ -50,7 +50,7 @@ node server.js
 ```sh
 cd client
 npm install
-yarn add
+yarn install
 yarn start
 ```
 ### 4. Set Up AI Services
