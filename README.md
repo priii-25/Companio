@@ -34,7 +34,7 @@ With **photo-based reminiscence therapy, AI-powered journaling, and sentiment-aw
 ---
 
 ## **How to Run the Project**
-### **1. Clone the Repository**
+### **1. Clone the Repository & Set Up Environment Variables**
 ```sh
 git clone https://github.com/your-repo/companio.git
 cd companio
@@ -43,7 +43,7 @@ cd companio
 ```sh
 cd server
 npm install
-yarn add nodemon
+yarn install
 node server.js
 ```
 ### 3. Set Up the Frontend
@@ -58,5 +58,3 @@ yarn start
 cd ai/EmpatheticBot
 uvicorn conversation:app --reload
 ```
-
-### 5. Set Up Environment Variables
