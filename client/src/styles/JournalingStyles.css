@@ -1,6 +1,8 @@
 /*Companio\client\src\styles\JournalingStyles.css*/
 @import "../styles/ColorPalette.css";
-
+*{
+  box-sizing: border-box;
+}
 :root {
   /* Nostalgic, warm color palette */
   --journal-primary: #785c43;
@@ -29,13 +31,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100vh;
+  min-height: 100vh; /* Keep this for full background */
   background: radial-gradient(ellipse at bottom right, #e6d7ca 0%, #f3e9dd 100%);
-  padding: 30px 20px 60px;
+  padding: 40px 20px 60px; /* Adjust top/side padding as before */
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto; 
   font-family: 'Noto Serif', Georgia, serif;
+  transition: filter var(--journal-transition);
 }
+
 
 /* Vintage background texture */
 .vintage-background {
@@ -1499,7 +1504,7 @@
 /* Medium screens (tablets, max-width: 1024px) */
 @media (max-width: 1024px) {
   .journal-container {
-    padding: 20px 15px 40px;
+    padding: 30px 15px 50px;
   }
 
   .journal-header {
@@ -1544,7 +1549,8 @@
 /* Tablets and small screens (max-width: 768px) */
 @media (max-width: 768px) {
   .journal-container {
-    padding: 15px 10px 30px;
+    padding: 25px 10px 100px; 
+
   }
 
   .journal-header {
@@ -1653,18 +1659,15 @@
     font-size: 0.9rem;
     padding: 8px;
   }
-
-  .face-recognition-button,
-  .fancy-recall-button.cute-recall {
-    bottom: 15px;
-    right: 15px;
-  }
+  .face-recognition-button { bottom: 70px; right: 15px; }
+  .fancy-recall-button.cute-recall { bottom: 15px; right: 15px; }
+  .recall-options.vintage-recall-dropdown { bottom: 75px; right: 15px; } 
 }
 
 /* Small screens (mobile, max-width: 480px) */
 @media (max-width: 480px) {
   .journal-container {
-    padding: 10px 5px 20px;
+    padding: 20px 8px 120px;
   }
 
   .vintage-title {
@@ -1818,29 +1821,19 @@
     padding: 6px;
   }
 
-  .face-recognition-button {
-    width: 50px;
-    height: 50px;
-    bottom: 10px;
-    right: 10px;
-  }
-
   .face-recognition-button .action-icon {
     width: 25px;
     height: 25px;
-  }
-
-  .fancy-recall-button.cute-recall {
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    bottom: 10px;
-    right: 10px;
   }
 
   .fancy-recall-button.cute-recall .recall-icon {
     width: 18px;
     height: 18px;
   }
+  .face-recognition-button { bottom: 65px; right: 10px; }
+  .fancy-recall-button.cute-recall { bottom: 10px; right: 10px; }
+  .recall-options.vintage-recall-dropdown { bottom: 65px; right: 10px; } /* Adjust calc if needed */
+
 }
 
 /* Extra small screens (max-width: 360px) */
