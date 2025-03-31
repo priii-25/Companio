@@ -240,7 +240,6 @@ const EmpatheticChatbot = () => {
             ))}
             <div ref={messagesEndRef} />
           </div>
-
           <div className="chatbot-input">
             <div className="input-wrapper">
               <textarea

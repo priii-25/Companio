@@ -153,14 +153,6 @@ const ProfileComponent = () => {
             </div>
           )}
         </section>
-
-        {/* Insights */}
-        <section className="profile-section vintage-paper">
-          <h2>Insights</h2>
-          <p><strong>Total Memories:</strong> {insights.totalMemories || 0}</p>
-          <p><strong>Favorite Memories:</strong> {insights.favoriteMemories || 0}</p>
-          <p><strong>Mood Breakdown:</strong> {insights.moodBreakdown ? Object.entries(insights.moodBreakdown).map(([mood, count]) => `${mood}: ${count}`).join(', ') : 'No data'}</p>
-        </section>
       </div>
     </>
   );

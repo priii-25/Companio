@@ -28,7 +28,7 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { name: 'Home', path: '/', icon: navIcons.home },
+    { name: 'Home', path: '/routine', icon: navIcons.home },
     { name: 'Journal', path: '/journal', icon: navIcons.journal },
     { name: 'Companion', path: '/chatbot', icon: navIcons.companion }, 
     { name: 'Library', path: '/story', icon: navIcons.memories }, 

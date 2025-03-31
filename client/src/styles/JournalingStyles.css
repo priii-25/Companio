@@ -1468,3 +1468,491 @@
   filter: blur(5px);
   transition: filter 0.3s ease;
 }
+/* Existing imports and :root remain unchanged */
+@import "../styles/ColorPalette.css";
+
+:root {
+  /* Nostalgic, warm color palette */
+  --journal-primary: #785c43;
+  --journal-accent: #d9ae94;
+  --journal-light: #f8f4e9;
+  --journal-card-bg: rgba(255, 253, 247, 0.92);
+  --journal-text: #3c2415;
+  --journal-shadow: 0 10px 30px rgba(90, 74, 58, 0.25);
+  --journal-shadow-hover: 0 15px 35px rgba(90, 74, 58, 0.35);
+  --journal-transition: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --warm-gold: #d4a96a;
+  --soft-pink: #eac9c1;
+  --muted-sage: #b6c199;
+  --dusty-blue: #a0b3c7;
+  --deep-amber: #c17817;
+  --paper-texture-opacity: 0.08;
+  --paper-border-color: rgba(164, 130, 96, 0.35);
+}
+
+/* Base styles remain largely unchanged, but we'll optimize below */
+
+/* Responsive Adjustments */
+
+/* Large screens (default styles apply) */
+
+/* Medium screens (tablets, max-width: 1024px) */
+@media (max-width: 1024px) {
+  .journal-container {
+    padding: 20px 15px 40px;
+  }
+
+  .journal-header {
+    max-width: 700px;
+  }
+
+  .vintage-title {
+    font-size: 2.8rem;
+  }
+
+  .journal-card {
+    max-width: 700px;
+    padding: 30px;
+  }
+
+  .welcome-title {
+    font-size: 1.9rem;
+  }
+
+  .journal-prompt {
+    font-size: 1rem;
+    max-width: 450px;
+  }
+
+  .image-container {
+    height: 250px;
+  }
+
+  .memories-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+
+  .memory-image-container {
+    height: 180px;
+  }
+
+  .recall-modal {
+    max-width: 350px;
+  }
+}
+
+/* Tablets and small screens (max-width: 768px) */
+@media (max-width: 768px) {
+  .journal-container {
+    padding: 15px 10px 30px;
+  }
+
+  .journal-header {
+    max-width: 100%;
+  }
+
+  .vintage-title {
+    font-size: 2.5rem;
+  }
+
+  .decorative-line {
+    width: 150px;
+  }
+
+  .journal-card {
+    max-width: 100%;
+    padding: 25px;
+    margin: 0 0 30px;
+  }
+
+  .welcome-title {
+    font-size: 1.8rem;
+  }
+
+  .journal-prompt {
+    font-size: 1rem;
+    max-width: 100%;
+  }
+
+  .prompt-decoration {
+    width: 40px;
+  }
+
+  .image-container {
+    height: 200px;
+  }
+
+  .photo-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .action-button {
+    width: 100%;
+    padding: 10px 15px;
+  }
+
+  .filter-buttons {
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .filter-button {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .mood-buttons {
+    gap: 8px;
+  }
+
+  .mood-button {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
+  .vintage-input {
+    padding: 12px;
+    font-size: 0.95rem;
+  }
+
+  .save-button,
+  .voice-button {
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .memories-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-image-container {
+    height: 160px;
+  }
+
+  .memory-text {
+    font-size: 0.9rem;
+    max-height: 60px;
+  }
+
+  .recall-modal {
+    max-width: 300px;
+    padding: 15px;
+  }
+
+  .recall-modal .modal-header h3 {
+    font-size: 1.3rem;
+  }
+
+  .recall-modal .person-button {
+    font-size: 0.9rem;
+    padding: 6px;
+  }
+
+  .recall-modal .webcam-recall-button {
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+
+  .face-recognition-button,
+  .fancy-recall-button.cute-recall {
+    bottom: 15px;
+    right: 15px;
+  }
+}
+
+/* Small screens (mobile, max-width: 480px) */
+@media (max-width: 480px) {
+  .journal-container {
+    padding: 10px 5px 20px;
+  }
+
+  .vintage-title {
+    font-size: 2rem;
+  }
+
+  .decorative-line {
+    width: 120px;
+  }
+
+  .journal-card {
+    padding: 20px 15px;
+    margin: 0 0 20px;
+  }
+
+  .welcome-title {
+    font-size: 1.6rem;
+  }
+
+  .title-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .journal-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .journal-prompt {
+    font-size: 0.95rem;
+    padding: 0 5px;
+  }
+
+  .prompt-decoration {
+    width: 30px;
+  }
+
+  .success-message {
+    font-size: 1rem;
+    padding: 10px;
+  }
+
+  .image-container {
+    height: 180px;
+  }
+
+  .image-placeholder {
+    padding: 15px;
+  }
+
+  .placeholder-icon {
+    font-size: 2.5rem;
+  }
+
+  .filter-label {
+    font-size: 0.85rem;
+  }
+
+  .filter-button {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+  }
+
+  .mood-button {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+  }
+
+  .vintage-input {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+  .vintage-select {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+
+  .form-group label {
+    font-size: 0.95rem;
+  }
+
+  .voice-button,
+  .save-button {
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+
+  .voice-button svg,
+  .save-button svg {
+    margin-right: 6px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .memories-title {
+    font-size: 1.5rem;
+  }
+
+  .memory-image-container {
+    height: 140px;
+  }
+
+  .memory-text {
+    font-size: 0.85rem;
+    max-height: 50px;
+  }
+
+  .memory-mood {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+
+  .memory-footer {
+    font-size: 0.8rem;
+  }
+
+  .no-memories {
+    padding: 30px;
+  }
+
+  .empty-icon {
+    font-size: 2.5rem;
+  }
+
+  .recall-modal {
+    width: 95%;
+    max-width: 280px;
+    padding: 10px;
+  }
+
+  .recall-modal .modal-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .recall-modal .modal-close-button {
+    font-size: 1rem;
+  }
+
+  .recall-modal .people-list {
+    max-height: 150px;
+  }
+
+  .recall-modal .person-button {
+    font-size: 0.85rem;
+    padding: 5px;
+  }
+
+  .recall-modal .webcam-recall-button {
+    font-size: 0.85rem;
+    padding: 6px;
+  }
+
+  .face-recognition-button {
+    width: 50px;
+    height: 50px;
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .face-recognition-button .action-icon {
+    width: 25px;
+    height: 25px;
+  }
+
+  .fancy-recall-button.cute-recall {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .fancy-recall-button.cute-recall .recall-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Extra small screens (max-width: 360px) */
+@media (max-width: 360px) {
+  .vintage-title {
+    font-size: 1.8rem;
+  }
+
+  .journal-card {
+    padding: 15px 10px;
+  }
+
+  .welcome-title {
+    font-size: 1.4rem;
+  }
+
+  .journal-prompt {
+    font-size: 0.9rem;
+  }
+
+  .image-container {
+    height: 150px;
+  }
+
+  .filter-button,
+  .mood-button {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .vintage-input {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+
+  .save-button,
+  .voice-button {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+
+  .memories-title {
+    font-size: 1.3rem;
+  }
+
+  .memory-image-container {
+    height: 120px;
+  }
+
+  .recall-modal {
+    max-width: 250px;
+  }
+
+  .recall-modal .modal-header h3 {
+    font-size: 1.1rem;
+  }
+}
+
+/* Adjustments for fixed elements overlapping */
+@media (max-width: 768px) {
+  .face-recognition-button {
+    bottom: 80px; /* Adjust to avoid overlap with cute-recall */
+  }
+
+  .fancy-recall-button.cute-recall {
+    bottom: 10px;
+  }
+
+  .recall-options.vintage-recall-dropdown {
+    bottom: 50px;
+  }
+}
+
+/* Ensure modal doesn't overflow on small screens */
+@media (max-width: 480px) {
+  .recall-modal-overlay {
+    padding: 10px;
+  }
+
+  .recall-modal {
+    width: 100%;
+    height: auto;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* Adjust floating shapes for smaller screens */
+@media (max-width: 768px) {
+  .floating-shapes::before {
+    width: 150px;
+    height: 150px;
+    top: 5%;
+    left: 10%;
+  }
+
+  .floating-shapes::after {
+    width: 100px;
+    height: 100px;
+    top: 50%;
+    right: 10%;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-shapes::before {
+    width: 100px;
+    height: 100px;
+  }
+
+  .floating-shapes::after {
+    width: 80px;
+    height: 80px;
+  }
+}
