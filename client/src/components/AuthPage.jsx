@@ -5,6 +5,7 @@ import Login from './Login';
 import Signup from './Signup';
 import ProfileSetup from './ProfileSetup';
 import './AuthStyles.css';
+import API_URL from '../config';
 
 const AuthPage = ({ onLogin }) => {
   const [currentView, setCurrentView] = useState('login');
@@ -33,7 +34,7 @@ const AuthPage = ({ onLogin }) => {
 
   const handleRegisterComplete = (profileData) => {
     const registerData = { ...basicInfo, profile: profileData };
-    axios.post('http://localhost:5000/api/users/register', registerData)
+    axios.post(`${API_URL}/api/users/register`, registerData)
       .then(response => {
         const { token } = response.data;
         onLogin(token);

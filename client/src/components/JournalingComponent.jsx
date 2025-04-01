@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/JournalingStyles.css';
 import Navbar from './Navbar';
+import API_URL from '../config';
 
 // Enhanced animated icons with more nostalgic/cute feel
 const icons = {
@@ -90,7 +91,7 @@ const JournalingComponent = () => {
 
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const response = await axios.get('http://localhost:5000/api/journal', config);
+      const response = await axios.get(`${API_URL}/api/journal`, config);
       setMemories(response.data);
       const uniquePeople = [...new Set(response.data.flatMap(memory => memory.withPeople || []))];
       setPeopleList(uniquePeople);
@@ -244,7 +245,7 @@ const JournalingComponent = () => {
               return;
             }
             setTimeout(() => {
-              fetch('http://localhost:5000/api/captured-frame', {
+              fetch(`${API_URL}/api/captured-frame`, {
                 headers: { Authorization: `Bearer ${token}` }
               })
                 .then(response => {
@@ -526,19 +527,15 @@ const JournalingComponent = () => {
 
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const response = await axios.post(
-        'http://localhost:5000/api/journal',
-        { 
-          image, 
-          text: journalText,
-          withPeople,
-          mood,
-          filter,
-          isFavorited,
-          weatherEffect
-        },
-        config
-      );
+      const response = await axios.post(`${API_URL}/api/journal`, { 
+        image, 
+        text: journalText,
+        withPeople,
+        mood,
+        filter,
+        isFavorited,
+        weatherEffect
+      }, config);
 
       setSuccess('✨ Memory beautifully preserved!');
       document.querySelector('.journal-card').classList.add('success-animation');
@@ -583,7 +580,7 @@ const JournalingComponent = () => {
         return;
       }
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const response = await axios.get('http://localhost:5000/api/journal', config);
+      const response = await axios.get(`${API_URL}/api/journal`, config);
       const filteredMemories = response.data.filter(memory => 
         memory.withPeople && memory.withPeople.includes(personName)
       );
@@ -618,7 +615,7 @@ const JournalingComponent = () => {
     setRecalling(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.post('http://localhost:5000/api/face-recognition/capture', {}, config);
+      await axios.post(`${API_URL}/api/face-recognition/capture`, {}, config);
     } catch (error) {
       console.error('Error capturing for recall:', error);
       setError('Failed to capture from cam: ' + (error.response?.data?.error || error.message));

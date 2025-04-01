@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './AuthStyles.css';
+import API_URL from '../config';
 
 const comfortingQuotes = [
   "Today is a beautiful day to remember what matters most.",
@@ -86,7 +87,7 @@ const Login = ({ switchToSignup, onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/users/login', formData, { timeout: 10000 });
+      const response = await axios.post(`${API_URL}/api/users/login`, formData, { timeout: 10000 });
       const { token } = response.data;
       onLoginSuccess(token);
       setLoading(false);

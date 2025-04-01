@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './AuthStyles.css'; // Reuse AuthStyles.css
 import '../styles/ProfileSetup.css'; // Include ProfileSetup styles
+import API_URL from '../config';
 
 const comfortingQuotes = [
   "Today is a beautiful day to remember what matters most.",
@@ -157,7 +158,7 @@ const Signup = ({ switchToLogin }) => {
     }
   
     try {
-      const response = await axios.post('http://localhost:5000/api/users/register', finalFormData, {
+      const response = await axios.post(`${API_URL}/api/users/register`, finalFormData, finalFormData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       localStorage.setItem('token', response.data.token);

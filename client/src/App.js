@@ -9,6 +9,7 @@ import ProfileComponent from './components/ProfileComponent';
 import InteractiveStorytellingApp from './components/InteractiveStorytellingApp';
 import Signup from './components/Signup';
 import './App.css';
+import API_URL from './config';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
@@ -23,7 +24,7 @@ function App() {
       }
 
       try {
-        await axios.get('http://localhost:5000/api/profile', {
+        await axios.get(`${API_URL}/api/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setIsAuthenticated(true);

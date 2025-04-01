@@ -4,6 +4,7 @@ import '../styles/RoutineManagementStyles.css';
 import SoundTherapyComponent from './SoundTherapyComponent';
 import axios from 'axios';
 import Navbar from './Navbar';
+import API_URL from '../config';
 
 // Weather emoticons (adjust paths to match your public folder structure)
 const weatherEmojis = {
@@ -100,7 +101,7 @@ const RoutineManagementApp = () => {
   useEffect(() => {
     const fetchRoutines = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/routines', {
+        const response = await axios.get(`${API_URL}/api/routines`, {
           headers: { Authorization: `Bearer ${getToken()}` }
         });
         setRoutines(response.data);
@@ -115,7 +116,7 @@ const RoutineManagementApp = () => {
   useEffect(() => {
     const fetchDailyRoutines = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/routines/${selectedDate}`, {
+        const response = await axios.get(`${API_URL}/api/routines/${selectedDate}`, {
           headers: { Authorization: `Bearer ${getToken()}` }
         });
         setRoutines(prev => ({ ...prev, [selectedDate]: response.data }));
@@ -134,7 +135,7 @@ const RoutineManagementApp = () => {
     const fetchWeather = async () => {
       setWeatherLoading(true);
       try {
-        const response = await axios.get('http://localhost:5000/api/weather', {
+        const response = await axios.get(`${API_URL}/api/weather`, {
           headers: { Authorization: `Bearer ${getToken()}` },
           params: { lat: 40.7128, lon: -74.0060 } // New York as default; replace with user location later
         });
@@ -151,7 +152,7 @@ const RoutineManagementApp = () => {
 
   const saveRoutinesToBackend = async (updatedRoutines) => {
     try {
-      const response = await axios.post(`http://localhost:5000/api/routines/${selectedDate}`, 
+      const response = await axios.post(`${API_URL}/api/routines/${selectedDate}`, 
         { routines: updatedRoutines[selectedDate] || [] },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
