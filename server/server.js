@@ -150,6 +150,8 @@ wss.on('connection', (ws) => {
   ws.on('close', () => console.log('WebSocket client disconnected'));
 });
 
+app.get('/api/health', (req, res) => res.json({ status: 'healthy' }));
+
 // User Routes
 app.post('/api/users/register', upload.array('profile[medicalReports]'), async (req, res) => {
   try {
