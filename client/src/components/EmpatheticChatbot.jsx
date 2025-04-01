@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import '../styles/ChatbotStyles.css';
 import Navbar from './Navbar';
+import API_URL from '../config';
 
 // Define the microphone icon path (same as in JournalingComponent)
 const icons = {
