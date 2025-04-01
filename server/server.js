@@ -108,14 +108,19 @@ app.get('/api/health', (req, res) => res.json({ status: 'healthy' }));
 
 // User Routes
 app.post('/api/users/register', async (req, res) => {
+  console.time('register');
   try {
     const { name, email, password, profile = {} } = req.body;
-    profile.medicalReports = []; // Mock for Vercel (no file uploads)
+    console.timeLog('register', 'Parsed body');
+    profile.medicalReports = [];
     const existingUser = await User.findOne({ email });
+    console.timeLog('register', 'Checked existing user');
     if (existingUser) return res.status(400).json({ message: 'User already exists' });
     const user = new User({ name, email, password, profile });
     await user.save();
+    console.timeLog('register', 'Saved user');
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    console.timeEnd('register');
     res.status(201).json({ token, user: { id: user._id, name, email } });
   } catch (error) {
     console.error('Error in /api/users/register:', error);
