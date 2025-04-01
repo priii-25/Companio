@@ -228,7 +228,7 @@ const JournalingComponent = () => {
 
     const connectWebSocket = () => {
       console.log('Connecting to WebSocket...');
-      websocket = new WebSocket('ws://localhost:5000');
+      const websocket = new WebSocket(`${API_URL.replace(/^http/, 'ws')}/api/websocket`);
       websocket.onopen = () => {
         console.log('WebSocket connected');
         retryCount = 0;

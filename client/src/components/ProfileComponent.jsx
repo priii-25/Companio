@@ -121,7 +121,7 @@ const ProfileComponent = () => {
                     {profile.medicalReports.map((report, index) => (
                       <li key={index}>
                         <a
-                          href={`http://localhost:5000/${report.path}`}
+                          href={`${API_URL}/${report.path}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ color: '#007bff', textDecoration: 'underline' }}

@@ -154,8 +154,7 @@ const EmpatheticChatbot = () => {
     if (keepsakeEcho) return keepsakeEcho;
 
     try {
-      const response = await axios.post(
-        'http://localhost:8000/chat',
+      const response = await axios.post(`${API_URL}/api/chat`,
         {
           prompt: userInput,
           history: conversationHistory,
