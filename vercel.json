@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "engines": { "node": "18.x" }, 
   "builds": [
     {
       "src": "server/server.js",
@@ -8,19 +9,11 @@
     {
       "src": "client/package.json",
       "use": "@vercel/static-build",
-      "config": {
-        "distDir": "client/build"
-      }
+      "config": { "distDir": "client/build" }
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "client/build/index.html"
-    }
+    { "src": "/api/(.*)", "dest": "server/server.js" },
+    { "src": "/(.*)", "dest": "client/build/index.html" }
   ]
 }
