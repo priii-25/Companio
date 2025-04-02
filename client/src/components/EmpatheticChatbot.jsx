@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/ChatbotStyles.css';
 import Navbar from './Navbar';
-import { API_URL } from '../config'; // Import API_URL
+import API_URL from '../config';
 
 // Define the microphone icon path (same as in JournalingComponent)
 const icons = {
