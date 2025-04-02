@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables first
 
 const express = require('express');
 const axios = require('axios');
@@ -6,29 +6,19 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const fetch = require('node-fetch');
 
 const app = express();
-
-// Enhanced CORS configuration
-app.use(
-  cors({
-    origin: ['https://companio-frontend.vercel.app', 'http://localhost:3000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow all needed methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Match client headers
-    credentials: true,
-  })
-);
-app.options('*', cors()); // Handle preflight for all routes explicitly
-
+app.use(cors({
+  origin: ['https://companio-frontend.vercel.app', 'http://localhost:3000'],
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Connect to MongoDB at startup
-mongoose
-  .connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -50,13 +40,13 @@ const userSchema = new mongoose.Schema({
     accessibility: {
       fontSize: { type: String, default: 'Large' },
       colorScheme: { type: String, default: 'Soothing Pastels' },
-    },
-  },
+    }
+  }
 });
 
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 8);
+  this.password = await bcrypt.hash(this.password, 8); // Reduced from 10 to 8 for speed
   next();
 });
 
@@ -66,13 +56,11 @@ const User = mongoose.model('User', userSchema);
 const routineSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   date: { type: String, required: true },
-  routines: [
-    {
-      time: { type: String, required: true },
-      task: { type: String, required: true },
-      completed: { type: Boolean, default: false },
-    },
-  ],
+  routines: [{
+    time: { type: String, required: true },
+    task: { type: String, required: true },
+    completed: { type: Boolean, default: false }
+  }],
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -110,7 +98,7 @@ const authMiddleware = (req, res, next) => {
   if (!token) return res.status(401).json({ message: 'No token provided' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.userId || decoded.id;
+    req.userId = decoded.userId || decoded.id; // Handle both userId and id
     next();
   } catch (error) {
     console.error('Token verification error:', error);
@@ -148,7 +136,7 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
     const profileUpdates = req.body.profile || {};
-    profileUpdates.medicalReports = [];
+    profileUpdates.medicalReports = []; // Mock for Vercel
     user.profile = { ...user.profile, ...profileUpdates };
     await user.save();
     res.json(user.profile);
@@ -178,15 +166,15 @@ app.post('/api/journal', authMiddleware, async (req, res) => {
   try {
     const { image, text, withPeople, mood, filter, isFavorited, weatherEffect } = req.body;
     if (!image || !text) return res.status(400).json({ message: 'Image and text are required' });
-    const journalEntry = new Journal({
-      userId: req.userId,
-      image,
-      text,
-      withPeople: withPeople || [],
-      mood,
-      filter,
-      isFavorited,
-      weatherEffect,
+    const journalEntry = new Journal({ 
+      userId: req.userId, 
+      image, 
+      text, 
+      withPeople: withPeople || [], 
+      mood, 
+      filter, 
+      isFavorited, 
+      weatherEffect 
     });
     await journalEntry.save();
     res.status(201).json({ message: 'Journal entry saved', journalEntry });
@@ -208,10 +196,11 @@ app.get('/api/journal', authMiddleware, async (req, res) => {
 
 app.get('/api/journal/texts', authMiddleware, async (req, res) => {
   try {
-    const journalTexts = await Journal.find({ userId: req.userId }, 'text')
-      .sort({ createdAt: -1 })
-      .lean();
-    const texts = journalTexts.map((entry) => entry.text);
+    const journalTexts = await Journal.find(
+      { userId: req.userId },
+      'text'
+    ).sort({ createdAt: -1 }).lean();
+    const texts = journalTexts.map(entry => entry.text);
     res.json({ texts });
   } catch (error) {
     console.error('Error fetching journal texts:', error);
@@ -307,13 +296,13 @@ const StoryGenerator = require('./storyteller').StoryGenerator;
 app.get('/api/story/:mood', authMiddleware, async (req, res) => {
   try {
     const { mood } = req.params;
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    const generator = new StoryGenerator(token);
+    const token = req.header('Authorization')?.replace('Bearer ', ''); 
+    const generator = new StoryGenerator(token); 
     const story = await generator.generate(mood);
     res.json({ story });
   } catch (error) {
-    console.error('Error generating story:', error);
-    res.status(500).json({ message: 'Failed to generate story' });
+    console.error("Error generating story:", error);
+    res.status(500).json({ message: "Failed to generate story" });
   }
 });
 
@@ -346,47 +335,6 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
   }
 });
 
-// Chatbot Route (Proxy to Gemini API)
-app.post('/api/chat', async (req, res) => {
-  const { prompt, history = [] } = req.body;
-  const apiKey = process.env.GOOGLE_API_KEY;
-  const modelName = 'tunedModels/empatheticbot-htv1uagdnucc';
-
-  if (!apiKey) {
-    return res.status(500).json({ message: 'Google API key not configured' });
-  }
-
-  try {
-    const context = history.map(([user, assistant]) => `User: ${user}\nAssistant: ${assistant}`).join('\n');
-    const fullPrompt = `${context}\nUser: ${prompt}\nAssistant:`;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: fullPrompt }] }],
-          generationConfig: { candidateCount: 1, maxOutputTokens: 250 },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! Status: ${response.status}, Details: ${errorText}`);
-    }
-
-    const data = await response.json();
-    const assistantResponse = data.candidates[0].content.parts[0].text;
-
-    res.json({ response: assistantResponse });
-  } catch (error) {
-    console.error('Chat error:', error.message);
-    res.status(500).json({ message: 'Failed to generate response', detail: error.message });
-  }
-});
-
 // Start Server
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server running on port ${process.env.PORT || 5000}`);
@@ -399,5 +347,3 @@ process.on('SIGINT', async () => {
   console.log('MongoDB connection closed.');
   process.exit(0);
 });
-
-module.exports = app; // Export for Vercel
