@@ -339,6 +339,8 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
   }
 });
 
+// [Everything unchanged until /api/chat]
+
 // Explicit CORS for /api/chat
 app.options('/api/chat', cors({
   origin: ['https://companio-frontend.vercel.app', 'http://localhost:3000'],
@@ -358,8 +360,10 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    const context = history.map(([user, assistant]) => `User: ${user}\nAssistant: ${assistant}`).join('\n');
-    const fullPrompt = `${context}\nUser: ${prompt}\nAssistant:`;
+    // Match working curl: plain text, no "User:" or "Assistant:", spaces instead of newlines
+    const context = history.map(([user, assistant]) => `${user} ${assistant}`).join(' ');
+    const fullPrompt = context ? `${context} ${prompt}` : prompt;
+    console.log('Calling Gemini API with model:', modelName, 'prompt:', fullPrompt);
 
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
@@ -370,13 +374,18 @@ app.post('/api/chat', async (req, res) => {
       { headers: { 'Content-Type': 'application/json' } }
     );
 
+    console.log('Gemini API response:', response.data);
     const assistantResponse = response.data.candidates[0].content.parts[0].text;
     res.json({ response: assistantResponse });
   } catch (error) {
-    console.error('Chat error:', error.message);
-    res.status(500).json({ message: 'Failed to generate response', detail: error.message });
+    console.error('Chat error:', error.message, 'Response:', error.response?.data);
+    res.status(error.response?.status || 500).json({
+      message: 'Failed to generate response',
+      detail: error.response?.data || error.message,
+    });
   }
 });
+
 
 // Start Server
 app.listen(process.env.PORT || 5000, () => {
