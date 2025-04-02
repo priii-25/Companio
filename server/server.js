@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const fetch = require('node-fetch'); // Only add this
 
 const app = express();
 app.use(
@@ -336,48 +337,6 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Error fetching weather:', error);
     res.status(500).json({ message: 'Failed to fetch weather data' });
-  }
-});
-
-const fetch = require('node-fetch');
-
-app.post('/api/chat', async (req, res) => {
-  const { prompt, history = [] } = req.body;
-  const apiKey = process.env.GOOGLE_API_KEY;
-  const modelName = 'tunedModels/empatheticbot-htv1uagdnucc';
-
-  if (!apiKey) {
-    return res.status(500).json({ message: 'Google API key not configured' });
-  }
-
-  try {
-    const context = history.map(([user, assistant]) => `User: ${user}\nAssistant: ${assistant}`).join('\n');
-    const fullPrompt = `${context}\nUser: ${prompt}\nAssistant:`;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: fullPrompt }] }],
-          generationConfig: { candidateCount: 1, maxOutputTokens: 250 },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! Status: ${response.status}, Details: ${errorText}`);
-    }
-
-    const data = await response.json();
-    const assistantResponse = data.candidates[0].content.parts[0].text;
-
-    res.json({ response: assistantResponse });
-  } catch (error) {
-    console.error('Chat error:', error.message);
-    res.status(500).json({ message: 'Failed to generate response', detail: error.message });
   }
 });
 
