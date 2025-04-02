@@ -339,6 +339,14 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
   }
 });
 
+// Explicit CORS for /api/chat
+app.options('/api/chat', cors({
+  origin: ['https://companio-frontend.vercel.app', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}));
+
 // Chatbot Route (Proxy to Gemini API with axios)
 app.post('/api/chat', async (req, res) => {
   const { prompt, history = [] } = req.body;
