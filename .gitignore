@@ -21,4 +21,4 @@ ai/EmpatheticBot/Model/model.safetensors
 ai/EmpatheticBot/Model/*.json
 */uploads/
 */.env
-
+*node_modules/

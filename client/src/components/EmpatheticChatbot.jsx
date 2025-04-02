@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/ChatbotStyles.css';
 import Navbar from './Navbar';
+import { API_URL } from '../config'; // Import API_URL
 
 // Define the microphone icon path (same as in JournalingComponent)
 const icons = {
@@ -163,36 +164,17 @@ const EmpatheticChatbot = () => {
     const keepsakeEcho = maybeEchoKeepsake();
     if (keepsakeEcho) return keepsakeEcho;
 
-    const apiKey = process.env.REACT_APP_GOOGLE_API_KEY;
-    const modelName = 'tunedModels/empatheticbot-htv1uagdnucc'; // Your tuned model
-
-    if (!apiKey) {
-      console.error('Google API key not found');
-      return "Oh no, I can’t connect right now! Something’s missing.";
-    }
-
     try {
-      const context = conversationHistory
-        .map(([user, assistant]) => `User: ${user}\nAssistant: ${assistant}`)
-        .join('\n');
-      const fullPrompt = `${context}\nUser: ${userInput}\nAssistant:`;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: fullPrompt }] }],
-            generationConfig: {
-              candidateCount: 1,
-              maxOutputTokens: 250,
-            },
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: userInput,
+          history: conversationHistory,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -200,7 +182,7 @@ const EmpatheticChatbot = () => {
       }
 
       const data = await response.json();
-      const assistantResponse = data.candidates[0].content.parts[0].text;
+      const assistantResponse = data.response;
 
       if (userInput.toLowerCase().includes('happy') || userInput.toLowerCase().includes('sad')) {
         setKeepsakes((prev) => [...prev, craftKeepsake(userInput)]);

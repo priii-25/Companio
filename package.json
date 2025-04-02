@@ -2,6 +2,9 @@
     "name": "companio",
     "version": "1.0.0",
     "engines": {
-      "node": "22.x"
+        "node": "22.x"
+    },
+    "dependencies": {
+        "node-fetch": "^3.3.2"
     }
-  }
+}
