@@ -1,4 +1,4 @@
-require('dotenv').config(); // Load environment variables first
+require('dotenv').config();
 
 const express = require('express');
 const axios = require('axios');
@@ -6,15 +6,21 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const fetch = require('node-fetch'); // Added for Gemini API calls
+const fetch = require('node-fetch');
 
 const app = express();
+
+// Enhanced CORS configuration
 app.use(
   cors({
     origin: ['https://companio-frontend.vercel.app', 'http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow all needed methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Match client headers
     credentials: true,
   })
 );
+app.options('*', cors()); // Handle preflight for all routes explicitly
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -50,7 +56,7 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 8); // Reduced from 10 to 8 for speed
+  this.password = await bcrypt.hash(this.password, 8);
   next();
 });
 
@@ -104,7 +110,7 @@ const authMiddleware = (req, res, next) => {
   if (!token) return res.status(401).json({ message: 'No token provided' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.userId || decoded.id; // Handle both userId and id
+    req.userId = decoded.userId || decoded.id;
     next();
   } catch (error) {
     console.error('Token verification error:', error);
@@ -142,7 +148,7 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
     const profileUpdates = req.body.profile || {};
-    profileUpdates.medicalReports = []; // Mock for Vercel
+    profileUpdates.medicalReports = [];
     user.profile = { ...user.profile, ...profileUpdates };
     await user.save();
     res.json(user.profile);
@@ -343,7 +349,7 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
 // Chatbot Route (Proxy to Gemini API)
 app.post('/api/chat', async (req, res) => {
   const { prompt, history = [] } = req.body;
-  const apiKey = process.env.GOOGLE_API_KEY; // Loaded from Vercel env vars
+  const apiKey = process.env.GOOGLE_API_KEY;
   const modelName = 'tunedModels/empatheticbot-htv1uagdnucc';
 
   if (!apiKey) {
@@ -393,3 +399,5 @@ process.on('SIGINT', async () => {
   console.log('MongoDB connection closed.');
   process.exit(0);
 });
+
+module.exports = app; // Export for Vercel
