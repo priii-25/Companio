@@ -341,6 +341,8 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
 
 // [Everything unchanged until /api/chat]
 
+// [Everything unchanged until /api/chat]
+
 // Explicit CORS for /api/chat
 app.options('/api/chat', cors({
   origin: ['https://companio-frontend.vercel.app', 'http://localhost:3000'],
@@ -360,17 +362,20 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    // Match working curl: plain text, no "User:" or "Assistant:", spaces instead of newlines
     const context = history.map(([user, assistant]) => `${user} ${assistant}`).join(' ');
     const fullPrompt = context ? `${context} ${prompt}` : prompt;
-    console.log('Calling Gemini API with model:', modelName, 'prompt:', fullPrompt);
+    const requestBody = {
+      contents: [{ parts: [{ text: fullPrompt }] }],
+      generationConfig: { candidateCount: 1, maxOutputTokens: 250 },
+    };
+    console.log('Calling Gemini API with:', {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+      body: requestBody,
+    });
 
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-      {
-        contents: [{ parts: [{ text: fullPrompt }] }],
-        generationConfig: { candidateCount: 1, maxOutputTokens: 250 },
-      },
+      requestBody,
       { headers: { 'Content-Type': 'application/json' } }
     );
 
