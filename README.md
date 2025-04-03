@@ -42,14 +42,12 @@ cd companio
 ### 2. Set Up the Backend
 ```sh
 cd server
-npm install
 yarn install
 node server.js
 ```
 ### 3. Set Up the Frontend
 ```sh
 cd client
-npm install
 yarn install
 yarn start
 ```
