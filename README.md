@@ -37,13 +37,14 @@ With **photo-based reminiscence therapy, AI-powered journaling, and sentiment-aw
 ### **1. Clone the Repository & Set Up Environment Variables**
 ```sh
 git clone https://github.com/your-repo/companio.git
-cd companio
+cd companion
+git checkout local
 ```
 ### 2. Set Up the Backend
 ```sh
 cd server
 yarn install
-node server.js
+nodemon server.js
 ```
 ### 3. Set Up the Frontend
 ```sh
@@ -56,3 +57,12 @@ yarn start
 cd ai/EmpatheticBot
 uvicorn conversation:app --reload
 ```
+
+---
+
+### **View the Hosted UI for Final Look & Feel**
+
+To explore the polished UI/UX version of **Companio**, visit the hosted main branch here:  
+🌐 [https://companio-frontend.vercel.app/](https://companio-frontend.vercel.app/)
+
+> The hosted version reflects the latest design system with **elderly-friendly visual cues** and **accessibility enhancements**.
