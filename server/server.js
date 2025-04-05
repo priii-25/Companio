@@ -300,12 +300,13 @@ const StoryGenerator = require('./storyteller').StoryGenerator;
 app.get('/api/story/:mood', authMiddleware, async (req, res) => {
   try {
     const { mood } = req.params;
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    const generator = new StoryGenerator(token);
-    const story = await generator.generate(mood);
+    // No need to extract token here for the generator
+    const generator = new StoryGenerator(); // Instantiate without token
+    // Pass the userId from the authenticated request to the generate method
+    const story = await generator.generate(mood, req.userId);
     res.json({ story });
   } catch (error) {
-    console.error('Error generating story:', error);
+    console.error('Error generating story in route handler:', error);
     res.status(500).json({ message: 'Failed to generate story' });
   }
 });
