@@ -36,7 +36,7 @@ With **photo-based reminiscence therapy, AI-powered journaling, and sentiment-aw
 ## **How to Run the Project**
 ### **1. Clone the Repository & Set Up Environment Variables**
 ```sh
-git clone https://github.com/your-repo/companio.git
+git clone https://github.com/priii-25/Companio
 cd companion
 git checkout local
 ```
