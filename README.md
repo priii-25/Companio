@@ -37,7 +37,7 @@ With **photo-based reminiscence therapy, AI-powered journaling, and sentiment-aw
 ### **1. Clone the Repository & Set Up Environment Variables**
 ```sh
 git clone https://github.com/priii-25/Companio
-cd companion
+cd Companio
 git checkout local
 ```
 ### 2. Set Up the Backend
