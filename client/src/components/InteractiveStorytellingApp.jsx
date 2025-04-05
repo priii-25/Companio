@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/InteractiveStorytellingStyles.css';
 import Navbar from './Navbar';
-import API_URL from '../config';
 
 const icons = {
   quill: "M3 17v4h4l11-11-4-4-11 11zm18-14l-3-3-1.41 1.41 3 3L21 3z",
@@ -45,7 +44,7 @@ const InteractiveStorytellingApp = () => {
   const fetchSavedStories = async () => {
     if (!token) return;
     try {
-      const response = await axios.get(`${API_URL}/api/stories`, {
+      const response = await axios.get('http://localhost:5000/api/stories', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedStories(response.data);
@@ -65,7 +64,7 @@ const InteractiveStorytellingApp = () => {
     }
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/api/story/${mood.toLowerCase()}`, {
+      const response = await axios.get(`http://localhost:5000/api/story/${mood.toLowerCase()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const fullStory = response.data.story;
@@ -100,7 +99,8 @@ const InteractiveStorytellingApp = () => {
     setIsFavorited(!isFavorited);
     if (!isFavorited && storyPages.length) {
       try {
-        const response = await axios.post(`${API_URL}/api/stories`,
+        const response = await axios.post(
+          'http://localhost:5000/api/stories',
           { pages: storyPages, mood, backdrop },
           { headers: { Authorization: `Bearer ${token}` } }
         );

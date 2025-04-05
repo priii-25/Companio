@@ -1,42 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import '../styles/ChatbotStyles.css';
 import Navbar from './Navbar';
-import API_URL from '../config';
 
 // Define the microphone icon path (same as in JournalingComponent)
 const icons = {
-  microphone:
-    'M12 14C13.66 14 15 12.66 15 11V5C15 3.34 13.66 2 12 2C10.34 2 9 3.34 9 5V11C9 12.66 10.34 14 12 14ZM11 5C11 4.45 11.45 4 12 4C12.55 4 13 4.45 13 5V11C13 11.55 12.55 12 12 12C11.45 12 11 11.55 11 11V5ZM17 11C17 13.76 14.76 16 12 16C9.24 16 7 13.76 7 11H5C5 14.53 7.61 17.43 11 17.9V21H13V17.9C16.39 17.43 19 14.53 19 11H17Z',
+  microphone: "M12 14C13.66 14 15 12.66 15 11V5C15 3.34 13.66 2 12 2C10.34 2 9 3.34 9 5V11C9 12.66 10.34 14 12 14ZM11 5C11 4.45 11.45 4 12 4C12.55 4 13 4.45 13 5V11C13 11.55 12.55 12 12 12C11.45 12 11 11.55 11 11V5ZM17 11C17 13.76 14.76 16 12 16C9.24 16 7 13.76 7 11H5C5 14.53 7.61 17.43 11 17.9V21H13V17.9C16.39 17.43 19 14.53 19 11H17Z",
 };
 
 // Reusable AnimatedIcon component (same as in JournalingComponent)
-const AnimatedIcon = ({ path, className = '' }) => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={`action-icon ${className}`}
-  >
+const AnimatedIcon = ({ path, className = "" }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`action-icon ${className}`}>
     <path d={path} fill="currentColor" />
   </svg>
 );
 
 const EmpatheticChatbot = () => {
   const [messages, setMessages] = useState([
-    {
-      sender: 'companion',
-      text: "Oh, hello, my lovely wanderer! I’ve been waiting by the window for you. What’s stirring in your heart today?",
-    },
+    { sender: 'companion', text: "Oh, hello, my lovely wanderer! I’ve been waiting by the window for you. What’s stirring in your heart today?" }
   ]);
   const [input, setInput] = useState('');
   const [keepsakes, setKeepsakes] = useState([]);
   const [conversationHistory, setConversationHistory] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [error, setError] = useState('');
+  const [isRecording, setIsRecording] = useState(false); // State for speech recording
+  const [error, setError] = useState(''); // State for error messages
   const messagesEndRef = useRef(null);
-  const recognitionRef = useRef(null);
+  const recognitionRef = useRef(null); // Ref for SpeechRecognition instance
 
   // Initialize SpeechRecognition
   useEffect(() => {
@@ -64,7 +53,7 @@ const EmpatheticChatbot = () => {
           const transcript = event.results[0][0].transcript;
           console.log('Transcript received:', transcript);
           console.log('Confidence:', event.results[0][0].confidence);
-          setInput((prev) => {
+          setInput(prev => {
             const newInput = prev ? `${prev} ${transcript}` : transcript;
             console.log('New input value:', newInput);
             return newInput;
@@ -145,10 +134,10 @@ const EmpatheticChatbot = () => {
 
   const craftKeepsake = (text) => {
     const words = text.toLowerCase().split(' ');
-    const emotion = words.find((w) => ['happy', 'sad', 'love', 'miss', 'dream'].includes(w)) || 'moment';
+    const emotion = words.find(w => ['happy', 'sad', 'love', 'miss', 'dream'].includes(w)) || 'moment';
     return {
       keyword: emotion,
-      poem: `A little ${emotion} danced in your words, "${text.slice(0, 20)}..." — I’ll tuck it in my pocket for us!`,
+      poem: `A little ${emotion} danced in your words, "${text.slice(0, 20)}..." — I’ll tuck it in my pocket for us!`
     };
   };
 
@@ -165,37 +154,28 @@ const EmpatheticChatbot = () => {
     if (keepsakeEcho) return keepsakeEcho;
 
     try {
-      const response = await fetch(`${API_URL}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await axios.post(
+        'http://localhost:8000/chat',
+        {
           prompt: userInput,
           history: conversationHistory,
-        }),
-      });
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! Status: ${response.status}, Details: ${errorText}`);
-      }
-
-      const data = await response.json();
-      const assistantResponse = data.response;
+      const assistantResponse = response.data.response;
 
       if (userInput.toLowerCase().includes('happy') || userInput.toLowerCase().includes('sad')) {
-        setKeepsakes((prev) => [...prev, craftKeepsake(userInput)]);
+        setKeepsakes(prev => [...prev, craftKeepsake(userInput)]);
       }
 
       return assistantResponse;
     } catch (error) {
-      console.error('Error fetching response:', error.message);
-      if (error.message.includes('401')) {
-        return "Hmm, I’m having trouble connecting. Maybe a quick refresh will help?";
-      } else if (error.message.includes('429')) {
-        return "Oh, I’m a bit overwhelmed! Can we slow down a little?";
-      }
+      console.error('Error fetching response:', error);
       return "Oh dear, something went awry! Shall we try again?";
     }
   };
@@ -203,13 +183,13 @@ const EmpatheticChatbot = () => {
   const handleSend = async () => {
     if (!input.trim()) return;
     const userMessage = { sender: 'user', text: input };
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
 
     const companionResponseText = await getResponse(input);
     const companionResponse = { sender: 'companion', text: companionResponseText };
-    setMessages((prev) => [...prev, companionResponse]);
+    setMessages(prev => [...prev, companionResponse]);
 
-    setConversationHistory((prev) => {
+    setConversationHistory(prev => {
       const newHistory = [...prev, [input, companionResponseText]];
       return newHistory.length > 5 ? newHistory.slice(1) : newHistory;
     });
@@ -279,7 +259,10 @@ const EmpatheticChatbot = () => {
                 tabIndex={0}
                 autoFocus
               />
-              <button className={`mic-button ${isRecording ? 'recording' : ''}`} onClick={handleVoiceInput}>
+              <button
+                className={`mic-button ${isRecording ? 'recording' : ''}`}
+                onClick={handleVoiceInput}
+              >
                 <AnimatedIcon path={icons.microphone} />
               </button>
               <div className="input-focus-effect"></div>

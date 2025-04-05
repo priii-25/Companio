@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/ProfileStyles.css';
 import Navbar from './Navbar';
-import API_URL from '../config';
 
 const ProfileComponent = () => {
   const [profile, setProfile] = useState({});
@@ -19,7 +18,7 @@ const ProfileComponent = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/profile`, {
+      const response = await axios.get('http://localhost:5000/api/profile', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProfile(response.data);
@@ -34,7 +33,7 @@ const ProfileComponent = () => {
   const fetchInsights = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/profile/insights`, {
+      const response = await axios.get('http://localhost:5000/api/profile/insights', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setInsights(response.data);
@@ -57,7 +56,7 @@ const ProfileComponent = () => {
         }
       });
 
-      const response = await axios.put(`${API_URL}/api/profile`, formData, formData, {
+      const response = await axios.put('http://localhost:5000/api/profile', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -121,7 +120,7 @@ const ProfileComponent = () => {
                     {profile.medicalReports.map((report, index) => (
                       <li key={index}>
                         <a
-                          href={`${API_URL}/${report.path}`}
+                          href={`http://localhost:5000/${report.path}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ color: '#007bff', textDecoration: 'underline' }}

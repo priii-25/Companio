@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import '../styles/NavbarStyles.css';
 
 const navIcons = {
@@ -53,15 +52,15 @@ const Navbar = () => {
 
         <div className={`nav-menu ${isOpen ? 'active' : ''}`}>
           {navItems.map((item) => (
-            <Link 
+            <a 
               key={item.name} 
-              to={item.path} 
+              href={item.path} 
               className="nav-item"
               onClick={() => setIsOpen(false)}
             >
               <AnimatedIcon path={item.icon} className="nav-icon" />
               <span>{item.name}</span>
-            </Link>
+            </a>
           ))}
         </div>
       </div>
