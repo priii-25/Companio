@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './AuthStyles.css'; // Reuse AuthStyles.css
 import '../styles/ProfileSetup.css'; // Include ProfileSetup styles
-import API_URL from '../config';
+import API_URL from '../config'; // Import the API URL configuration
 
 const comfortingQuotes = [
   "Today is a beautiful day to remember what matters most.",
@@ -25,6 +25,7 @@ const AnimatedIcon = ({ path }) => (
   </svg>
 );
 
+// Make sure the component receives switchToLogin prop
 const Signup = ({ switchToLogin }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -40,7 +41,7 @@ const Signup = ({ switchToLogin }) => {
     allergies: [''],
     caregiverContacts: [{ name: '', phone: '', email: '' }],
     accessibility: { fontSize: 'Large', colorScheme: 'Soothing Pastels', voiceActivation: true },
-    medicalReports: [],
+    medicalReports: [], // Keep this to handle file input changes, even if not sent
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -63,15 +64,25 @@ const Signup = ({ switchToLogin }) => {
 
   const handleChange = (e, section, index) => {
     const { name, value } = e.target;
+    setError(''); // Clear error on change
+
     if (section === 'simple') {
       setFormData({ ...formData, [name]: value });
     } else if (section === 'array') {
       const updatedArray = [...(formData[name] || [])];
+      // Ensure index exists; add if necessary (e.g., for multiple allergies)
+      while (updatedArray.length <= index) {
+          updatedArray.push(''); // Initialize new entries if needed
+      }
       updatedArray[index] = value || '';
       setFormData({ ...formData, [name]: updatedArray });
     } else if (section === 'objectArray') {
       const field = e.target.dataset.field;
       const updatedArray = [...(formData[name] || [])];
+      // Ensure index exists; add if necessary
+      while (updatedArray.length <= index) {
+          updatedArray.push({}); // Initialize new object entries if needed
+      }
       updatedArray[index] = { ...(updatedArray[index] || {}), [field]: value || '' };
       setFormData({ ...formData, [name]: updatedArray });
     } else if (section === 'accessibility') {
@@ -83,6 +94,7 @@ const Signup = ({ switchToLogin }) => {
   };
 
   const handleCheckboxChange = (e) => {
+    setError(''); // Clear error on change
     setFormData({
       ...formData,
       accessibility: { ...formData.accessibility, voiceActivation: e.target.checked },
@@ -90,8 +102,11 @@ const Signup = ({ switchToLogin }) => {
   };
 
   const handleFileChange = (e) => {
+    setError(''); // Clear error on change
     const files = Array.from(e.target.files);
+    // Update state even though we won't send the files
     setFormData({ ...formData, medicalReports: files });
+    console.log("Selected files (will not be sent):", files.map(f => f.name));
   };
 
   const handleNext = () => setStep(step + 1);
@@ -101,7 +116,8 @@ const Signup = ({ switchToLogin }) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-  
+
+    // --- Step 1: Basic Account Info Validation ---
     if (step === 1) {
       if (formData.password !== formData.confirmPassword) {
         setError('Passwords do not match');
@@ -111,77 +127,89 @@ const Signup = ({ switchToLogin }) => {
         setError('Password must be at least 6 characters');
         return;
       }
+      if (!formData.fullName || !formData.email) {
+        setError('Full Name and Email are required');
+        return;
+      }
+       // Basic email format check (optional but recommended)
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+         setError('Please enter a valid email address');
+         return;
+      }
+      // If validation passes for step 1, move to next step
       handleNext();
-      return;
+      return; // Stop execution here for step 1
     }
-  
+
+    // --- Step 2 & 3: Just move to the next step ---
     if (step < 4) {
       handleNext();
-      return;
+      return; // Stop execution here for steps 2 and 3
     }
-  
-    setLoading(true);
-  
-    const cleanedProfileData = {
-      preferredName: formData.preferredName,
-      dateOfBirth: formData.dateOfBirth,
-      location: formData.location,
-      medicalHistory: formData.medicalHistory.filter(item => item.condition || item.notes),
-      medications: formData.medications.filter(item => item.name || item.dosage || item.schedule),
-      allergies: formData.allergies.filter(allergy => allergy),
-      caregiverContacts: formData.caregiverContacts.filter(
-        contact => contact.name || contact.phone || contact.email
-      ),
-      accessibility: formData.accessibility,
-      medicalReports: formData.medicalReports,
-    };
-  
-    const finalFormData = new FormData();
-    finalFormData.append('name', formData.fullName);
-    finalFormData.append('email', formData.email);
-    finalFormData.append('password', formData.password);
-  
-    Object.entries(cleanedProfileData).forEach(([key, value]) => {
-      if (key === 'medicalReports') {
-        // Append all files under the same field name 'profile[medicalReports]'
-        value.forEach(file => {
-          finalFormData.append('profile[medicalReports]', file);
-        });
-      } else {
-        finalFormData.append(`profile[${key}]`, JSON.stringify(value));
+
+    // --- Step 4: Final Submission ---
+    if (step === 4) {
+      setLoading(true);
+
+      // 1. Create the plain JavaScript object to send as JSON
+      const registrationData = {
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        profile: { // Nest profile data
+          preferredName: formData.preferredName,
+          dateOfBirth: formData.dateOfBirth || null, // Send null if empty
+          location: formData.location,
+          // Filter arrays to remove empty entries before sending
+          medicalHistory: formData.medicalHistory.filter(item => item && (item.condition || item.notes)),
+          medications: formData.medications.filter(item => item && (item.name || item.dosage || item.schedule)),
+          allergies: formData.allergies.filter(allergy => allergy && allergy.trim()),
+          caregiverContacts: formData.caregiverContacts.filter(
+            contact => contact && (contact.name || contact.phone || contact.email)
+          ),
+          accessibility: formData.accessibility,
+          // medicalReports is intentionally omitted
+        }
+      };
+
+      console.log('Submitting final registration data as JSON:', JSON.stringify(registrationData, null, 2));
+
+      try {
+        // 2. Send the registrationData object using axios
+        const response = await axios.post(`${API_URL}/api/users/register`, registrationData); // Axios sends JSON by default
+
+        // Handle success
+        localStorage.setItem('token', response.data.token);
+        setSuccess('✨ Account created successfully! Welcome to your journey...');
+        // Redirect after a short delay
+        setTimeout(() => navigate('/journal'), 2500);
+
+      } catch (err) {
+        // Handle errors from the API call
+        setError(err.response?.data?.message || 'Registration failed. Please try again.');
+        console.error("Registration Error:", err.response?.data || err.message);
+      } finally {
+        // Stop loading indicator regardless of success or failure
+        setLoading(false);
       }
-    });
-  
-    console.log('Submitting final data:');
-    for (let pair of finalFormData.entries()) {
-      console.log(`${pair[0]}: ${pair[1]}`);
-    }
-  
-    try {
-      const response = await axios.post(`${API_URL}/api/users/register`, finalFormData, finalFormData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      localStorage.setItem('token', response.data.token);
-      setSuccess('✨ Account created successfully! Welcome to your journey...');
-      setTimeout(() => navigate('/journal'), 2500);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
+
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
 
+  // --- Render Logic for Steps ---
   const renderStep = () => {
     switch (step) {
+      // --- STEP 1: BASIC INFO ---
       case 1:
         return (
           <div className="auth-step">
             <h2>Create Account</h2>
             <p>Join our caring community</p>
-            <div className="form-group">
+            <div className={`form-group ${focusedField === 'fullName' ? 'focused' : ''}`}>
               <label htmlFor="fullName">
                 <AnimatedIcon path={icons.user} /> Full Name
               </label>
@@ -200,7 +228,7 @@ const Signup = ({ switchToLogin }) => {
                 <div className="input-focus-effect"></div>
               </div>
             </div>
-            <div className="form-group">
+            <div className={`form-group ${focusedField === 'email' ? 'focused' : ''}`}>
               <label htmlFor="email">
                 <AnimatedIcon path={icons.email} /> Email Address
               </label>
@@ -219,7 +247,7 @@ const Signup = ({ switchToLogin }) => {
                 <div className="input-focus-effect"></div>
               </div>
             </div>
-            <div className="form-group">
+            <div className={`form-group ${focusedField === 'password' ? 'focused' : ''}`}>
               <label htmlFor="password">
                 <AnimatedIcon path={icons.password} /> Password
               </label>
@@ -246,7 +274,7 @@ const Signup = ({ switchToLogin }) => {
                 <div className="input-focus-effect"></div>
               </div>
             </div>
-            <div className="form-group">
+            <div className={`form-group ${focusedField === 'confirmPassword' ? 'focused' : ''}`}>
               <label htmlFor="confirmPassword">
                 <AnimatedIcon path={icons.password} /> Confirm Password
               </label>
@@ -273,12 +301,14 @@ const Signup = ({ switchToLogin }) => {
                 <div className="input-focus-effect"></div>
               </div>
             </div>
+            {/* Button type is submit to trigger form validation (if any) */}
             <button type="submit" className="auth-button" disabled={loading}>
               <span className="button-text">{loading ? 'Processing...' : 'Next'}</span>
               <span className="button-shine"></span>
             </button>
           </div>
         );
+      // --- STEP 2: PERSONAL DETAILS ---
       case 2:
         return (
           <div className="setup-step">
@@ -310,102 +340,126 @@ const Signup = ({ switchToLogin }) => {
                 placeholder="Where do you live?"
               />
             </div>
-            <button className="back-button" onClick={handleBack}>
-              Back
-            </button>
-            <button type="submit" className="next-button" disabled={loading}>
-              Next
-            </button>
+            <div className="step-buttons">
+              <button type="button" className="back-button" onClick={handleBack}>
+                Back
+              </button>
+              {/* Button type is submit to trigger form's onSubmit */}
+              <button type="submit" className="next-button" disabled={loading}>
+                Next
+              </button>
+            </div>
           </div>
         );
+      // --- STEP 3: HEALTH INFO ---
       case 3:
         return (
           <div className="setup-step">
             <h2>Your Health Matters</h2>
+            {/* Medical History */}
             <div className="form-group">
-              <label>Medical Condition:</label>
+              <label>Medical Condition(s) & Notes:</label>
+              {/* Only showing the first entry for simplicity in setup */}
               <input
-                value={formData.medicalHistory[0].condition}
+                value={formData.medicalHistory[0]?.condition || ''}
                 data-field="condition"
                 name="medicalHistory"
                 onChange={(e) => handleChange(e, 'objectArray', 0)}
-                placeholder="e.g., Diabetes"
+                placeholder="Condition (e.g., Diabetes)"
               />
               <input
-                value={formData.medicalHistory[0].notes}
+                value={formData.medicalHistory[0]?.notes || ''}
                 data-field="notes"
                 name="medicalHistory"
                 onChange={(e) => handleChange(e, 'objectArray', 0)}
-                placeholder="Any notes?"
+                placeholder="Notes (optional)"
               />
+              {/* Add button for more conditions could be added here */}
             </div>
+             {/* Medications */}
             <div className="form-group">
-              <label>Medication:</label>
+              <label>Medication(s):</label>
               <input
-                value={formData.medications[0].name}
+                value={formData.medications[0]?.name || ''}
                 data-field="name"
                 name="medications"
                 onChange={(e) => handleChange(e, 'objectArray', 0)}
-                placeholder="e.g., Aspirin"
+                placeholder="Medication Name (e.g., Aspirin)"
               />
               <input
-                value={formData.medications[0].schedule}
+                value={formData.medications[0]?.schedule || ''}
                 data-field="schedule"
                 name="medications"
                 onChange={(e) => handleChange(e, 'objectArray', 0)}
-                placeholder="e.g., Daily at 8 AM"
+                placeholder="Schedule (e.g., Daily at 8 AM)"
               />
+               {/* Add button for more medications could be added here */}
             </div>
+            {/* Allergies */}
             <div className="form-group">
-              <label>Allergy:</label>
+              <label>Allergies:</label>
               <input
-                value={formData.allergies[0]}
+                value={formData.allergies[0] || ''}
                 name="allergies"
                 onChange={(e) => handleChange(e, 'array', 0)}
-                placeholder="e.g., Peanuts"
+                placeholder="Allergy (e.g., Peanuts)"
               />
+               {/* Add button for more allergies could be added here */}
             </div>
+            {/* Caregiver Contacts */}
             <div className="form-group">
-              <label>Caregiver:</label>
+              <label>Caregiver Contact (Optional):</label>
               <input
-                value={formData.caregiverContacts[0].name}
+                value={formData.caregiverContacts[0]?.name || ''}
                 data-field="name"
                 name="caregiverContacts"
                 onChange={(e) => handleChange(e, 'objectArray', 0)}
-                placeholder="Name"
+                placeholder="Caregiver Name"
               />
               <input
-                value={formData.caregiverContacts[0].phone}
+                value={formData.caregiverContacts[0]?.phone || ''}
                 data-field="phone"
                 name="caregiverContacts"
                 onChange={(e) => handleChange(e, 'objectArray', 0)}
-                placeholder="Phone"
+                placeholder="Caregiver Phone"
               />
+               {/* Add button for more caregivers could be added here */}
             </div>
+            {/* Medical Reports (File Input - Not Sent) */}
             <div className="form-group">
-              <label>Medical Reports (PDFs):</label>
+              <label>Medical Reports (PDFs - Upload Optional Later):</label>
               <input
                 type="file"
                 accept=".pdf"
                 multiple
                 onChange={handleFileChange}
+                // Disabled because backend doesn't handle it now
+                disabled
               />
+              {/* Show selected file names, but clarify they aren't uploaded now */}
               {formData.medicalReports.length > 0 && (
-                <ul>
-                  {formData.medicalReports.map((file, index) => (
-                    <li key={index}>{file.name}</li>
-                  ))}
-                </ul>
+                <>
+                  <p style={{fontSize: '0.8em', color: '#666'}}><i>File selection is for future use, not uploaded during signup.</i></p>
+                  <ul>
+                    {formData.medicalReports.map((file, index) => (
+                      <li key={index} style={{fontSize: '0.9em'}}>{file.name}</li>
+                    ))}
+                  </ul>
+                </>
               )}
             </div>
-            <button className="back-button" onClick={handleBack}>
-              Back
-            </button>
-            <button type="submit" className="next-button" disabled={loading}>
-              Next
-            </button>
+            <div className="step-buttons">
+              <button type="button" className="back-button" onClick={handleBack}>
+                Back
+              </button>
+              {/* Button type is submit to trigger form's onSubmit */}
+              <button type="submit" className="next-button" disabled={loading}>
+                Next
+              </button>
+            </div>
           </div>
         );
+      // --- STEP 4: ACCESSIBILITY ---
       case 4:
         return (
           <div className="setup-step">
@@ -436,46 +490,65 @@ const Signup = ({ switchToLogin }) => {
               <label>
                 <input
                   type="checkbox"
+                  name="voiceActivation" // Ensure name matches state key
                   checked={formData.accessibility.voiceActivation}
                   onChange={handleCheckboxChange}
                 />
-                Enable Voice Activation
+                Enable Voice Activation Features
               </label>
             </div>
-            <button className="back-button" onClick={handleBack}>
-              Back
-            </button>
-            <button type="submit" className="next-button" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Finish'}
-            </button>
+            <div className="step-buttons">
+              <button type="button" className="back-button" onClick={handleBack}>
+                Back
+              </button>
+              {/* Final submit button */}
+              <button type="submit" className="next-button" disabled={loading}>
+                {loading ? 'Creating Account...' : 'Finish Setup'}
+              </button>
+            </div>
           </div>
         );
       default:
-        return null;
+        return null; // Should not happen
     }
   };
 
+  // --- Main Component Return ---
   return (
     <div className="auth-container">
       <div className="vintage-background"></div>
       <div className="floating-shapes"></div>
-      <div className="auth-card">
-        <h1 className="welcome-title">Sign Up</h1>
-        <p className="auth-subtitle">Let’s create your account</p>
+      <div className="auth-card setup-card"> {/* Added setup-card class */}
+        <h1 className="welcome-title">Create Your Companio Account</h1>
+        {/* Subtitle changes based on step */}
+        <p className="auth-subtitle setup-subtitle">
+          {step === 1 && "Let's start with the basics"}
+          {step === 2 && "A little more about you"}
+          {step === 3 && "Your well-being matters"}
+          {step === 4 && "Adjust settings for comfort"}
+        </p>
         <div className="quote-container">
           <p className="inspirational-quote">{quote}</p>
         </div>
+
+        {/* Display Errors/Success */}
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
-        <div className="step-indicator">Step {step} of 4</div>
-        <form onSubmit={handleSubmit} className="auth-form">
+
+        {/* Step Indicator */}
+        {!success && <div className="step-indicator">Step {step} of 4</div>}
+
+        {/* Form Wrapper */}
+        <form onSubmit={handleSubmit} className="auth-form setup-form">
           {renderStep()}
         </form>
-        {step === 1 && (
+
+        {/* Link to Login (only on step 1) */}
+        {step === 1 && !success && (
           <div className="auth-alt-option">
             <p>Already have an account?</p>
-            <button className="text-button" onClick={switchToLogin}>
-              Sign In
+            <button type="button" className="text-button" onClick={switchToLogin}>
+              Sign In Instead
             </button>
           </div>
         )}
